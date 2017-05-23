@@ -1,7 +1,7 @@
 Promagent
 =========
 
-_Instrumenting Java Web applications without Modifying their Source Code._
+_Instrumenting Java Web Applications without Modifying their Source Code._
 
 Promagent is a Java agent providing [Prometheus](https://prometheus.io/) metrics for Java Web applications without modifying the application's source code.
 Promagent uses the [Byte Buddy](http://bytebuddy.net/) bytecode manipulation library to insert Prometheus metrics during application startup.
@@ -131,7 +131,7 @@ Promagent supports three different ways of exporting metrics for the Prometheus 
   If `port` is omitted the built-in server is not started.
 * The [promagent-exporter](https://github.com/fstab/promagent/tree/master/promagent-exporter) module implements
   a simple Web application in WAR file format. If you deploy the _promagent-exporter/target/promagent.war_ on your
-  server, it will collect Promagent metrics via JMX and expose them under it's deployment URL,
+  server, it will collect Promagent metrics via JMX and expose them under its deployment URL,
   like [http://localhost:8080/promagent](http://localhost:8080/promagent).
 * All metrics are made available via JMX, so any JMX client can be used to access the metrics.
 
