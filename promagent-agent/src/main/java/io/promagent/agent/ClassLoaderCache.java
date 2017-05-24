@@ -46,6 +46,7 @@ class ClassLoaderCache {
 
     // TODO: Potential memory leak if applications are redeployed without restarting the application server,
     // because class loaders are kept in this cache even if they are not needed anymore.
+    // Maybe use java.lang.ref.WeakReference here.
     private final Map<ClassLoader, ClassLoader> classLoaderCache;
 
     private ClassLoaderCache(List<URL> urls) {
@@ -87,7 +88,7 @@ class ClassLoaderCache {
             // i.e. in addition to the command line argument -javaagent:/path/to/promagent.jar,
             // the argument -Xbootclasspath/p:/path/to/promagent.jar is used.
             for (String arg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
-                if (arg.matches("^-javaagent:.*promagent([^/]*).jar$")) {
+                if (arg.matches("^-javaagent:.*promagent([^/]*).jar$")) { // TODO: Forgot to strip agentArgs like =port=9300
                     String path = arg.replace("-javaagent:", "");
                     return Paths.get(path);
                 }

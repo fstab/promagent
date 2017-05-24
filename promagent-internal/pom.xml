@@ -8,7 +8,7 @@
     </parent>
 
     <artifactId>promagent-internal</artifactId>
-    <name>Promagent classes not visible on the boot class loader</name>
+    <name>Promagent classes not visible by the system class loader</name>
 
     <packaging>jar</packaging>
 
@@ -17,7 +17,7 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>promagent-agent</artifactId>
             <version>${project.version}</version>
-            <scope>provided</scope> <!-- provided via the boot class loader -->
+            <scope>provided</scope> <!-- provided via the system class loader -->
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>

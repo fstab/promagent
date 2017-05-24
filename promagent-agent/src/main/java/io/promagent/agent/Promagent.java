@@ -17,7 +17,7 @@ package io.promagent.agent;
 import java.lang.instrument.Instrumentation;
 
 /**
- * We want as little dependencies as possible on the bootstrap class loader,
+ * We want as little dependencies as possible on the system class loader,
  * so the agent just delegates to the real agent which is loaded using our own class loader.
  */
 public class Promagent {

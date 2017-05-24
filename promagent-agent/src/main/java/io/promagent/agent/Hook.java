@@ -24,7 +24,7 @@ import java.util.List;
 
 /**
  * Wrapper around an instance of a class annotated with @Hook.
- * This Wrapper is loaded from the bootstrap class loader and does not have any direct references
+ * This Wrapper is loaded from the system class loader and does not have any direct references
  * to classes from the promagent-internal module.
  * The "delegate" is the instance of the class annotated with @Hook.
  * The "delegate" is loaded using the {@link ClassLoaderCache}.
