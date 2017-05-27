@@ -27,6 +27,8 @@ import java.security.CodeSource;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * To understand the ClassLoaderCache, think of the ServletHook as an example.
@@ -83,21 +85,30 @@ class ClassLoaderCache {
 
     private static Path findAgentJar() {
         CodeSource cs = Promagent.class.getProtectionDomain().getCodeSource();
-        if (cs == null) {
-            // This happens if the Promagent class is loaded from the bootstrap classloader,
+        if (cs != null) {
+            return findAgentJarFromCodeSource(cs);
+        } else {
+            // This happens if the Promagent class is loaded from the bootstrap class loader,
             // i.e. in addition to the command line argument -javaagent:/path/to/promagent.jar,
             // the argument -Xbootclasspath/p:/path/to/promagent.jar is used.
-            for (String arg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
-                if (arg.matches("^-javaagent:.*promagent([^/]*).jar$")) { // TODO: Forgot to strip agentArgs like =port=9300
-                    String path = arg.replace("-javaagent:", "");
-                    return Paths.get(path);
-                }
-            }
-        } else {
-            try {
-                return Paths.get(cs.getLocation().toURI());
-            } catch (URISyntaxException e) {
-                throw new RuntimeException("Failed to load promagent.jar from " + cs.getLocation() + ": " + e.getMessage(), e);
+            return findAgentJarFromCmdline(ManagementFactory.getRuntimeMXBean().getInputArguments());
+        }
+    }
+
+    private static Path findAgentJarFromCodeSource(CodeSource cs) {
+        try {
+            return Paths.get(cs.getLocation().toURI());
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Failed to load promagent.jar from " + cs.getLocation() + ": " + e.getMessage(), e);
+        }
+    }
+
+    static Path findAgentJarFromCmdline(List<String> cmdlineArgs) {
+        Pattern p = Pattern.compile("^-javaagent:(.*promagent([^/]*).jar)(=.*)?$");
+        for (String arg : cmdlineArgs) {
+            Matcher m = p.matcher(arg);
+            if (m.matches()) {
+                return Paths.get(m.group(1));
             }
         }
         throw new RuntimeException("Failed to locate promagent.jar file.");
