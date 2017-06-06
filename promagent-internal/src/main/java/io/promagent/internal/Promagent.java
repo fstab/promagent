@@ -14,6 +14,7 @@
 
 package io.promagent.internal;
 
+import io.promagent.agent.ClassLoaderCache;
 import io.promagent.agent.HookFactory;
 import io.promagent.agent.annotations.Before;
 import io.promagent.agent.annotations.Hook;
@@ -22,15 +23,21 @@ import io.promagent.internal.metrics.PromagentCollectorRegistry;
 import io.prometheus.client.CollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.implementation.bytecode.StackManipulation;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.utility.JavaModule;
 
 import javax.management.ObjectName;
 import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
@@ -77,7 +84,7 @@ public class Promagent {
         if (!hookClass.isAnnotationPresent(Hook.class)) {
             System.err.println("Skipping " + hookClass.getSimpleName() + ", because it has no @" + Hook.class.getSimpleName() + " annotation.");
         } else {
-            for (Class<?> instrumentedInterface : hookClass.getAnnotation(Hook.class).instruments()) {
+            for (String instruments : hookClass.getAnnotation(Hook.class).instruments()) {
                 ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
                 for (Method method : hookClass.getMethods()) {
                     if (method.isAnnotationPresent(Before.class)) {
@@ -92,11 +99,13 @@ public class Promagent {
                         }
                     }
                 }
+                ElementMatcher.Junction<MethodDescription> finalMethodMatcher = methodMatcher;
                 agentBuilder = agentBuilder
-                        .type(ElementMatchers.hasSuperType(named(instrumentedInterface.getName())))
+                        .type(ElementMatchers.hasSuperType(named(instruments)))
                         .transform(new AgentBuilder.Transformer.ForAdvice()
-                                .include(Promagent.class.getClassLoader())
-                                .advice(methodMatcher, PromagentAdvice.class.getName()));
+                                        .include(ClassLoaderCache.getInstance().currentClassLoader())
+                                        .advice(finalMethodMatcher, PromagentAdvice.class.getName())
+                        );
             }
         }
         return agentBuilder;

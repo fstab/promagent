@@ -29,8 +29,8 @@ import java.util.concurrent.TimeUnit;
 import static io.promagent.internal.hooks.Context.*;
 
 @Hook(instruments = {
-        java.sql.Statement.class,
-        java.sql.Connection.class
+        "java.sql.Statement",
+        "java.sql.Connection"
 })
 public class JdbcHook {
 

@@ -15,7 +15,9 @@
 package io.promagent.agent;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Create an instance of a class annotated with @Hook and wrap it into a {@link Hook} instance.
@@ -29,16 +31,16 @@ public class HookFactory {
             HOOK_PACKAGE + "JdbcHook"
     };
 
-    public static List<Hook> createHooks(Class<?> instrumentedInterfaces) {
+    public static List<Hook> createHooks(Class<?> classToBeInstrumented) {
+        ClassLoaderCache classLoaders = ClassLoaderCache.getInstance();
         try {
+            Set<String> classesAndInterfaces = getAllSuperClassesAndInterfaces(classToBeInstrumented);
             List<Hook> result = new ArrayList<>();
-            ClassLoaderCache classLoaderCache = ClassLoaderCache.getInstance();
-            Class contextClass = classLoaderCache.loadClass(HOOK_PACKAGE + "Context");
+            Class contextClass = classLoaders.currentClassLoader().loadClass(HOOK_PACKAGE + "Context");
             for (String hook : hooks) {
-                Class<?> hookClass = classLoaderCache.loadClass(hook);
-                Class<?>[] interfaces = hookClass.getAnnotation(io.promagent.agent.annotations.Hook.class).instruments();
-                for (Class<?> ifc : interfaces) {
-                    if (ifc.isAssignableFrom(instrumentedInterfaces)) {
+                Class<?> hookClass = classLoaders.currentClassLoader().loadClass(hook);
+                for (String instruments : hookClass.getAnnotation(io.promagent.agent.annotations.Hook.class).instruments()) {
+                    if (classesAndInterfaces.contains(instruments)) {
                         Object context = contextClass.newInstance();
                         result.add(new Hook(hookClass.getConstructor(contextClass).newInstance(context)));
                     }
@@ -48,5 +50,25 @@ public class HookFactory {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Set<String> getAllSuperClassesAndInterfaces(Class<?> clazz) {
+        Set<String> result = new HashSet<>();
+        addAllSuperClassesAndInterfaces(clazz, result);
+        return result;
+    }
+
+    private static void addAllSuperClassesAndInterfaces(Class<?> clazz, Set<String> result) {
+        if (clazz == null) {
+            return;
+        }
+        if (result.contains(clazz.getName())) {
+            return;
+        }
+        result.add(clazz.getName());
+        for (Class<?> ifc : clazz.getInterfaces()) {
+            addAllSuperClassesAndInterfaces(ifc, result);
+        }
+        addAllSuperClassesAndInterfaces(clazz.getSuperclass(), result);
     }
 }

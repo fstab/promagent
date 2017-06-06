@@ -16,11 +16,11 @@ package io.promagent.agent;
 
 import org.junit.jupiter.api.Test;
 
-import static io.promagent.agent.ClassLoaderCache.findAgentJarFromCmdline;
+import static io.promagent.agent.JarFiles.findAgentJarFromCmdline;
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ClassLoaderCacheTest {
+public class JarFilesTest {
 
     @Test
     public void testCmdlineParserWildfly() {

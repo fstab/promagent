@@ -22,7 +22,7 @@ import java.lang.instrument.Instrumentation;
  */
 public class Promagent {
     public static void premain(String agentArgs, Instrumentation inst) throws Exception {
-        Object realAgent = ClassLoaderCache.getInstance().loadClass("io.promagent.internal.Promagent").newInstance();
+        Object realAgent = ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.internal.Promagent").newInstance();
         realAgent.getClass().getMethod("premain", String.class, Instrumentation.class).invoke(realAgent, agentArgs, inst);
     }
 }

@@ -31,7 +31,10 @@ import java.util.concurrent.TimeUnit;
 import static io.promagent.internal.hooks.Context.SERVLET_HOOK_METHOD;
 import static io.promagent.internal.hooks.Context.SERVLET_HOOK_PATH;
 
-@Hook(instruments = {javax.servlet.Servlet.class, javax.servlet.Filter.class})
+@Hook(instruments = {
+        "javax.servlet.Servlet",
+        "javax.servlet.Filter"
+})
 public class ServletHook {
 
     private static final String HTTP_REQUESTS_TOATAL = "http_requests_total";

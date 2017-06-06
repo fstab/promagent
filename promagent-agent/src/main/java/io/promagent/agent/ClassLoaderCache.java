@@ -14,113 +14,47 @@
 
 package io.promagent.agent;
 
-import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.CodeSource;
-import java.util.*;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * To understand the ClassLoaderCache, think of the ServletHook as an example.
- * The ServletHook instruments the Servlet method service(ServletRequest request, ServletResponse response).
- * We need to make sure that the ServletRequest and ServletResponse classes are loaded with the
- * context class loader Thread.currentThread().getContextClassLoader(), because this is the class loader used by
- * the Servlet implementation.
- * On the other hand, the ServletHook class itself can only be loaded by reading promagent-internal.jar.
- * Therefore, we need to create a URLClassLoader for promagent-internal.jar with the current context class loader as its parent.
- * The ClassLoaderCache caches these class loaders so that we create only one URLClassLoader per context class loader.
+ * ClassLoaderCache stores the class loaders used for loading the Hooks (like ServletHook or JdbcHook).
+ * <p/>
+ * There is one {@link HookClassLoader} per deployment in an application server, because hook classes may
+ * reference classes from the deployment, e.g. as parameters to the before() and after() methods.
+ * <p/>
+ * When {@link #currentClassLoader()} is called for the first time within a class loader context,
+ * a new {@link HookClassLoader} is created on the fly. Repeated calls in the same context yield the same class loader.
  */
-class ClassLoaderCache {
+public class ClassLoaderCache {
 
     private static ClassLoaderCache instance;
 
-    private final List<URL> urls;
+    // TODO: The cache does not free class loaders when applications are undeployed. Maybe use WeakHashMap?
+    private final Map<ClassLoader, HookClassLoader> cache = new HashMap<>();
+    private final URLClassLoader metricsClassLoader;
+    private final List<URL> hookJars;
 
-    // TODO: Potential memory leak if applications are redeployed without restarting the application server,
-    // because class loaders are kept in this cache even if they are not needed anymore.
-    // Maybe use java.lang.ref.WeakReference here.
-    private final Map<ClassLoader, ClassLoader> classLoaderCache;
-
-    private ClassLoaderCache(List<URL> urls) {
-        this.urls = Collections.unmodifiableList(urls);
-        this.classLoaderCache = new HashMap<>();
+    private ClassLoaderCache(JarFiles jarFiles) {
+        metricsClassLoader = new URLClassLoader(jarFiles.getDependencyJars().toArray(new URL[]{}));
+        hookJars = jarFiles.getHookJars();
     }
 
-    synchronized static ClassLoaderCache getInstance() {
+    public static synchronized ClassLoaderCache getInstance() {
         if (instance == null) {
-            List<URL> urls = new ArrayList<>();
-            Path agentJar = findAgentJar();
-            // The URLClassLoader does not directly support jar: URLs, so we need to extract the nested
-            // JARs to a temporary directory. See https://bugs.openjdk.java.net/browse/JDK-4735639
-            try (JarFile jarFile = new JarFile(agentJar.toFile())) {
-                urls.add(agentJar.toUri().toURL());
-                Path tmpDir = Files.createTempDirectory("promagent-");
-                tmpDir.toFile().deleteOnExit();
-                Enumeration<JarEntry> jarEntries = jarFile.entries();
-                while (jarEntries.hasMoreElements()) {
-                    JarEntry jarEntry = jarEntries.nextElement();
-                    if (jarEntry.getName().startsWith("lib/") && jarEntry.getName().endsWith(".jar")) {
-                        Path tmpFile = tmpDir.resolve(jarEntry.getName().replaceAll(".*/", ""));
-                        Files.copy(jarFile.getInputStream(jarEntry), tmpFile);
-                        urls.add(tmpFile.toUri().toURL());
-                    }
-                }
-                instance = new ClassLoaderCache(urls);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load promagent.jar: " + e.getMessage(), e);
-            }
+            instance = new ClassLoaderCache(JarFiles.extract());
         }
         return instance;
     }
 
-    private static Path findAgentJar() {
-        CodeSource cs = Promagent.class.getProtectionDomain().getCodeSource();
-        if (cs != null) {
-            return findAgentJarFromCodeSource(cs);
-        } else {
-            // This happens if the Promagent class is loaded from the bootstrap class loader,
-            // i.e. in addition to the command line argument -javaagent:/path/to/promagent.jar,
-            // the argument -Xbootclasspath/p:/path/to/promagent.jar is used.
-            return findAgentJarFromCmdline(ManagementFactory.getRuntimeMXBean().getInputArguments());
+    public synchronized ClassLoader currentClassLoader() {
+        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        if (! cache.containsKey(contextClassLoader)) {
+            cache.put(contextClassLoader, new HookClassLoader(hookJars, metricsClassLoader, contextClassLoader));
         }
-    }
-
-    private static Path findAgentJarFromCodeSource(CodeSource cs) {
-        try {
-            return Paths.get(cs.getLocation().toURI());
-        } catch (URISyntaxException e) {
-            throw new RuntimeException("Failed to load promagent.jar from " + cs.getLocation() + ": " + e.getMessage(), e);
-        }
-    }
-
-    static Path findAgentJarFromCmdline(List<String> cmdlineArgs) {
-        Pattern p = Pattern.compile("^-javaagent:(.*promagent([^/]*).jar)(=.*)?$");
-        for (String arg : cmdlineArgs) {
-            Matcher m = p.matcher(arg);
-            if (m.matches()) {
-                return Paths.get(m.group(1));
-            }
-        }
-        throw new RuntimeException("Failed to locate promagent.jar file.");
-    }
-
-    synchronized Class<?> loadClass(String className) throws ClassNotFoundException, MalformedURLException {
-        ClassLoader parent = Thread.currentThread().getContextClassLoader();
-        ClassLoader composedClassLoader = classLoaderCache.get(parent);
-        if (composedClassLoader == null) {
-            composedClassLoader = URLClassLoader.newInstance(urls.toArray(new URL[urls.size()]), parent);
-            classLoaderCache.put(parent, composedClassLoader);
-        }
-        return composedClassLoader.loadClass(className);
+        return cache.get(contextClassLoader);
     }
 }
