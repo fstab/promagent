@@ -16,28 +16,20 @@ package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.agent.HookFactory;
-import io.promagent.agent.annotations.Before;
-import io.promagent.agent.annotations.Hook;
 import io.promagent.internal.metrics.Exporter;
 import io.promagent.internal.metrics.PromagentCollectorRegistry;
 import io.prometheus.client.CollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;
-import net.bytebuddy.description.type.TypeDescription;
-import net.bytebuddy.dynamic.DynamicType;
-import net.bytebuddy.implementation.bytecode.StackManipulation;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
-import net.bytebuddy.utility.JavaModule;
+import net.bytebuddy.pool.TypePool;
 
 import javax.management.ObjectName;
 import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
@@ -54,9 +46,14 @@ public class Promagent {
             AgentBuilder agentBuilder = new AgentBuilder.Default()
                     .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
                     .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
+            TypePool typePool = TypePool.Default.of(ClassLoaderCache.getInstance().currentClassLoader());
+            System.out.println("Promagent instrumenting the following classes or interfaces:");
             for (String hook : HookFactory.hooks) {
-                Class<?> hookClass = initHookClass(hook, registry);
-                agentBuilder = applyHook(agentBuilder, hookClass);
+                HookConfig hookConfig = HookConfig.of(hook, typePool);
+                System.out.println(hookConfig);
+                agentBuilder = applyHook(agentBuilder, hookConfig);
+
+                initHookClass(hook, registry);
             }
             agentBuilder.installOn(inst);
         } catch (Throwable t) {
@@ -67,6 +64,7 @@ public class Promagent {
     /**
      * Load Hook class and call static method init(registry)
      */
+    // TODO: Im am currently trying to remove the runtime dependency on servlet-api. It is already removed for getting HookConfig, but it is not yet removed for calling initHookClass().
     private static Class<?> initHookClass(String className, CollectorRegistry registry) {
         try {
             Class<?> hookClass = Promagent.class.getClassLoader().loadClass(className);
@@ -80,33 +78,27 @@ public class Promagent {
     /**
      * For each @Before method in the hook class add a corresponding ElementMatcher to the agentBuilder
      */
-    private static AgentBuilder applyHook(AgentBuilder agentBuilder, Class<?> hookClass) {
-        if (!hookClass.isAnnotationPresent(Hook.class)) {
-            System.err.println("Skipping " + hookClass.getSimpleName() + ", because it has no @" + Hook.class.getSimpleName() + " annotation.");
-        } else {
-            for (String instruments : hookClass.getAnnotation(Hook.class).instruments()) {
-                ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
-                for (Method method : hookClass.getMethods()) {
-                    if (method.isAnnotationPresent(Before.class)) {
-                        for (String methodName : method.getAnnotation(Before.class).method()) {
-                            methodMatcher = methodMatcher
-                                    .or(ElementMatchers
-                                            .named(methodName)
-                                            .and(not(isAbstract()))
-                                            .and(isPublic())
-                                            .and(takesArguments(method.getParameterTypes()))
-                                    );
-                        }
-                    }
+    private static AgentBuilder applyHook(AgentBuilder agentBuilder, HookConfig hookConfig) {
+        for (HookConfig.ClassOrInterfaceConfig instruments : hookConfig.getInstrumentedClassesOrInterfaces()) {
+            ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
+            for (HookConfig.MethodConfig method : instruments.getInstrumentedMethods()) {
+                ElementMatcher.Junction<MethodDescription> junction = ElementMatchers
+                        .named(method.getMethodName())
+                        .and(not(isAbstract()))
+                        .and(isPublic())
+                        .and(takesArguments(method.getParameterTypes().size()));
+                for (int i = 0; i < method.getParameterTypes().size(); i++) {
+                    // TODO: Tested for Objects (javax.servlet.Servlet) and primitive types (int), but not for arrays and generics yet.
+                    junction = junction.and(takesArgument(i, hasSuperType(named(method.getParameterTypes().get(i)))));
                 }
-                ElementMatcher.Junction<MethodDescription> finalMethodMatcher = methodMatcher;
-                agentBuilder = agentBuilder
-                        .type(ElementMatchers.hasSuperType(named(instruments)))
-                        .transform(new AgentBuilder.Transformer.ForAdvice()
-                                        .include(ClassLoaderCache.getInstance().currentClassLoader())
-                                        .advice(finalMethodMatcher, PromagentAdvice.class.getName())
-                        );
+                methodMatcher = methodMatcher.or(junction);
             }
+            agentBuilder = agentBuilder
+                    .type(ElementMatchers.hasSuperType(named(instruments.getClassOrInterfaceName())))
+                    .transform(new AgentBuilder.Transformer.ForAdvice()
+                            .include(ClassLoaderCache.getInstance().currentClassLoader())
+                            .advice(methodMatcher, PromagentAdvice.class.getName())
+                    );
         }
         return agentBuilder;
     }
