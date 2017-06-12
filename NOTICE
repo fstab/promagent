@@ -1,8 +1,0 @@
-Promagent includes the following libraries:
-
-  Byte Buddy (without dependencies) under The Apache Software License, Version 2.0
-  Java Servlet API under CDDL + GPLv2 with classpath exception
-  Prometheus Java Simpleclient under The Apache Software License, Version 2.0
-  Prometheus Java Simpleclient Common under The Apache Software License, Version 2.0
-
-This file is generated during the Maven build.

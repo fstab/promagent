@@ -64,27 +64,5 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-        <plugins>
-            <!-- generate the NOTICE file, as required by the Apache 2 license -->
-            <plugin>
-                <groupId>org.jasig.maven</groupId>
-                <artifactId>maven-notice-plugin</artifactId>
-                <version>1.0.6</version>
-                <!-- <version>1.0.7-SNAPSHOT</version> local copy of https://github.com/Jasig/maven-notice-plugin/pull/10 -->
-                <configuration>
-                    <includeScopes>compile</includeScopes> <!-- from version 1.0.7-SNAPSHOT -->
-                    <generateChildNotices>false</generateChildNotices>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>generate-license</id>
-                        <phase>initialize</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
     </build>
 </project>
