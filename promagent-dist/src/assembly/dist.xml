@@ -27,6 +27,7 @@
             <outputDirectory>/lib</outputDirectory>
             <excludes>
                 <exclude>*:promagent-agent</exclude>
+                <exclude>*:promagent-dist</exclude>
             </excludes>
         </dependencySet>
 

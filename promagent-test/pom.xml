@@ -1,0 +1,186 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.promagent</groupId>
+        <artifactId>promagent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>promagent-test</artifactId>
+    <name>integration tests</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>promagent-dist</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.squareup.okhttp</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>2.7.5</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>0.21.0</version>
+                <configuration>
+                    <images>
+
+                        <!-- promagent/oracle-jdk-8: base image for all tests -->
+                        <image>
+                            <name>${project.parent.artifactId}/oracle-jdk-8</name>
+                            <build>
+                                <from>ubuntu:17.04</from>
+                                <workdir>/opt</workdir>
+                                <runCmds>
+                                    <run>apt-get update</run>
+                                    <run>apt-get upgrade</run>
+                                    <run>apt-get install -y curl git neovim sudo</run>
+                                    <run>curl --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz</run>
+                                    <run>tar xfz jdk-8u131-linux-x64.tar.gz</run>
+                                    <run>curl -O http://ftp.fau.de/apache/maven/maven-3/3.5.0/binaries/apache-maven-3.5.0-bin.tar.gz</run>
+                                    <run>tar xfz apache-maven-3.5.0-bin.tar.gz</run>
+                                    <run>echo 'export JAVA_HOME="/opt/jdk1.8.0_131"' >> /etc/profile.d/java.sh</run>
+                                    <run>echo 'export MAVEN_HOME="/opt/apache-maven-3.5.0"' >> /etc/profile.d/java.sh</run>
+                                    <run>echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> /etc/profile.d/java.sh</run>
+                                    <run>echo 'export PATH="$MAVEN_HOME/bin:$PATH"' >> /etc/profile.d/java.sh</run>
+                                    <run>adduser --disabled-password --gecos '' promagent</run>
+                                    <run>echo 'promagent ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers</run>
+                                </runCmds>
+                                <user>promagent</user>
+                                <env>
+                                    <JAVA_HOME>/opt/jdk1.8.0_131</JAVA_HOME>
+                                    <MAVEN_HOME>/opt/apache-maven-3.5.0</MAVEN_HOME>
+                                    <PATH>/opt/jdk1.8.0_131/bin:/opt/apache-maven-3.5.0/bin:$PATH</PATH>
+                                </env>
+                            </build>
+                        </image>
+
+                        <!-- promagent/wildfly-kitchensink: image with wildfly and the kitchensink sample deployment -->
+                        <image>
+                            <name>${project.parent.artifactId}/wildfly-kitchensink</name>
+                            <build>
+                                <from>${project.parent.artifactId}/oracle-jdk-8</from>
+                                <workdir>/home/promagent</workdir>
+                                <runCmds>
+                                    <run>curl -O http://download.jboss.org/wildfly/10.1.0.Final/wildfly-10.1.0.Final.tar.gz</run>
+                                    <run>tar xfz wildfly-10.1.0.Final.tar.gz</run>
+                                    <run>git clone https://github.com/wildfly/quickstart.git</run>
+                                    <run>cd quickstart/kitchensink; mvn clean package</run>
+                                    <run>cp quickstart/kitchensink/target/kitchensink.war wildfly-10.1.0.Final/standalone/deployments</run>
+                                </runCmds>
+                            </build>
+                        </image>
+
+                        <!-- promagent/wildfly-kitchensink-promagent: promagent added, used for the WildflyIT integration test -->
+                        <image>
+                            <name>${project.parent.artifactId}/wildfly-kitchensink-promagent</name>
+                            <build>
+                                <from>${project.parent.artifactId}/wildfly-kitchensink</from>
+                                <runCmds>
+                                    <run>echo '#!/bin/bash' >> run.sh</run>
+                                    <run>echo >> run.sh</run>
+                                    <run>echo 'cd wildfly-10.1.0.Final' >> run.sh</run>
+                                    <run>echo 'LOGMANAGER_JAR=$(find $(pwd) -name "jboss-logmanager-*.jar")' >> run.sh</run>
+                                    <run>echo 'export JAVA_OPTS="' >> run.sh</run>
+                                    <run>echo '    -Djava.net.preferIPv4Stack=true' >> run.sh</run>
+                                    <run>echo '    -Xbootclasspath/p:${LOGMANAGER_JAR}' >> run.sh</run>
+                                    <run>echo '    -Djboss.modules.system.pkgs=org.jboss.logmanager,io.promagent.agent' >> run.sh</run>
+                                    <run>echo '    -Djava.util.logging.manager=org.jboss.logmanager.LogManager' >> run.sh</run>
+                                    <run>echo '    -javaagent:../promagent.jar=port=9300' >> run.sh</run>
+                                    <run>echo '"' >> run.sh</run>
+                                    <run>echo >> run.sh</run>
+                                    <run>echo './bin/standalone.sh -b=0.0.0.0' >> run.sh</run>
+                                    <run>chmod 755 run.sh</run>
+                                </runCmds>
+                                <assembly>
+                                    <targetDir>/home/promagent</targetDir>
+                                    <user>promagent:promagent:promagent</user>
+                                    <inline>
+                                        <files>
+                                            <file>
+                                                <source>../promagent-dist/target/promagent.jar</source>
+                                                <outputDirectory>/</outputDirectory>
+                                            </file>
+                                        </files>
+                                    </inline>
+                                </assembly>
+                            </build>
+                            <run>
+                                <ports>
+                                    <!-- The docker-maven-plugin will set wildfly.port and promagent.port -->
+                                    <!-- ... to the dynamically allocated ports on the docker host. -->
+                                    <port>${wildfly.port}:8080</port>
+                                    <port>${promagent.port}:9300</port>
+                                </ports>
+                                <wait>
+                                    <log>WildFly Full 10.1.0.Final .WildFly Core 2.2.0.Final. started in [0-9]+ms</log>
+                                    <time>30000</time>
+                                </wait>
+                                <cmd>./run.sh</cmd>
+                                <log>
+                                    <enabled>true</enabled>
+                                    <prefix>[Wildfly]</prefix>
+                                </log>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>build</goal>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>2.20</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- Map maven variables to system properties which in turn can be used in the test classes -->
+                        <wildfly.url>http://${docker.host.address}:${wildfly.port}</wildfly.url>
+                        <promagent.url>http://${docker.host.address}:${promagent.port}</promagent.url>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>integration-tests</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

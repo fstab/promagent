@@ -9,7 +9,6 @@
     </parent>
 
     <artifactId>promagent-dist</artifactId>
-    <packaging>pom</packaging>
     <name>promagent.jar</name>
 
     <!-- make sure the other modules are built before this one -->
@@ -41,6 +40,7 @@
                         <phase>package</phase>
                         <configuration>
                             <appendAssemblyId>false</appendAssemblyId>
+                            <attach>false</attach>
                             <descriptors>
                                 <descriptor>src/assembly/dist.xml</descriptor>
                             </descriptors>
