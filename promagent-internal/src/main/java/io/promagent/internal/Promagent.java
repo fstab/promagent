@@ -46,16 +46,14 @@ public class Promagent {
             AgentBuilder agentBuilder = new AgentBuilder.Default()
                     .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
                     .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
-            TypePool typePool = TypePool.Default.of(ClassLoaderCache.getInstance().currentClassLoader());
-            System.out.println("Promagent instrumenting the following classes or interfaces:");
+            HookConfig hookConfig = HookConfig.of(HookFactory.hooks);
+            agentBuilder = applyHooks(agentBuilder, hookConfig);
+            agentBuilder.installOn(inst);
             for (String hook : HookFactory.hooks) {
-                HookConfig hookConfig = HookConfig.of(hook, typePool);
-                System.out.println(hookConfig);
-                agentBuilder = applyHook(agentBuilder, hookConfig);
-
                 initHookClass(hook, registry);
             }
-            agentBuilder.installOn(inst);
+            System.out.println("Promagent instrumenting the following classes or interfaces:");
+            System.out.println(hookConfig);
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -76,9 +74,9 @@ public class Promagent {
     }
 
     /**
-     * For each @Before method in the hook class add a corresponding ElementMatcher to the agentBuilder
+     * Add {@link ElementMatcher} for the hooks.
      */
-    private static AgentBuilder applyHook(AgentBuilder agentBuilder, HookConfig hookConfig) {
+    private static AgentBuilder applyHooks(AgentBuilder agentBuilder, HookConfig hookConfig) {
         for (HookConfig.ClassOrInterfaceConfig instruments : hookConfig.getInstrumentedClassesOrInterfaces()) {
             ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
             for (HookConfig.MethodConfig method : instruments.getInstrumentedMethods()) {

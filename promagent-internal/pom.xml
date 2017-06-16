@@ -29,12 +29,18 @@
             <artifactId>simpleclient_common</artifactId>
             <version>0.0.16</version>
         </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.5</version>
+        </dependency>
 
         <!-- APIs to be instrumented -->
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
             <version>3.1.0</version>
+            <!--<scope>provided</scope>--><!-- TODO: Make provided work here -->
             <!-- Not provided, because we need to call the ServletHook's static init() method outside of the Web context of the application server -->
         </dependency>
 
