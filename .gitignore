@@ -2,3 +2,6 @@
 dependency-reduced-pom.xml
 target/
 **/*.iml
+**/.classpath
+**/.project
+**/.settings

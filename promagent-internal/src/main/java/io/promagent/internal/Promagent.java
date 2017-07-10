@@ -80,6 +80,8 @@ public class Promagent {
         for (HookConfig.ClassOrInterfaceConfig instruments : hookConfig.getInstrumentedClassesOrInterfaces()) {
             ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
             for (HookConfig.MethodConfig method : instruments.getInstrumentedMethods()) {
+                // If you are using Eclipse or Visual Studio Code and see a syntax error here, it could be this one:
+                // https://github.com/eclipse/eclipse.jdt.ls/issues/291
                 ElementMatcher.Junction<MethodDescription> junction = ElementMatchers
                         .named(method.getMethodName())
                         .and(not(isAbstract()))

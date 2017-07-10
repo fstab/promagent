@@ -1,7 +1,7 @@
 Promagent
 =========
 
-_Instrumenting Java Web Applications without Modifying their Source Code._
+_Prometheus Monitoring for Java Web Applications without Modifying their Source Code._
 
 Promagent is a Java agent providing [Prometheus](https://prometheus.io/) metrics for Java Web applications without modifying the application's source code.
 Promagent uses the [Byte Buddy](http://bytebuddy.net/) bytecode manipulation library to insert Prometheus metrics during application startup.
