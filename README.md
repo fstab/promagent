@@ -154,6 +154,11 @@ I am currently not planning to add a large number of out-of-the-box metrics. If 
 
 For examples of methods you might want to instrument, look at related projects, like [inspectIT](http://www.inspectit.rocks/) (hooks are configured [here](https://github.com/inspectIT/inspectIT/tree/master/inspectit.server/src/main/external-resources/ci/profiles/common)) or [stagemonitor](http://www.stagemonitor.org/).
 
+Resources
+---------
+
+* [Instrumenting Java Web Applications without Modifying their Source Code](https://www.javacodegeeks.com/2017/07/instrumenting-java-web-applications-without-modifying-source-code.html) (Java Code Geeks)
+
 Thank You ConSol
 ----------------
 
