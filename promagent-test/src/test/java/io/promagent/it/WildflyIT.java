@@ -30,7 +30,7 @@ public class WildflyIT {
     @Test
     public void testWildfly() throws Exception {
         OkHttpClient client = new OkHttpClient();
-        Request restRequest = new Request.Builder().url(System.getProperty("wildfly.url") + "/kitchensink/rest/members").build();
+        Request restRequest = new Request.Builder().url(System.getProperty("wildfly.url") + "/wildfly-kitchensink/rest/members").build();
         Request metricsRequest = new Request.Builder().url(System.getProperty("promagent.url") + "/metrics").build();
 
         // Execute REST call
