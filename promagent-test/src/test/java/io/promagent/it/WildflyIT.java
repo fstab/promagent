@@ -20,48 +20,56 @@ import com.squareup.okhttp.Response;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class WildflyIT {
 
     /**
      * Run some HTTP queries against a Docker container from image promagent/wildfly-kitchensink-promagent.
      * <p/>
-     * The Docker container is started by the maven-docker-plugin when running <tt>mvn verify</tt>.
+     * The Docker container is started by the maven-docker-plugin when running <tt>mvn verify -Pwildfly</tt>.
      */
     @Test
     public void testWildfly() throws Exception {
         OkHttpClient client = new OkHttpClient();
-        Request restRequest = new Request.Builder().url(System.getProperty("wildfly.url") + "/wildfly-kitchensink/rest/members").build();
-        Request metricsRequest = new Request.Builder().url(System.getProperty("promagent.url") + "/metrics").build();
+        Request restRequest = new Request.Builder().url(System.getProperty("deployment.url") + "/rest/members").build();
 
         // Execute REST call
         Response restResponse = client.newCall(restRequest).execute();
         Assertions.assertTrue(restResponse.body().string().contains("John Smith"));
 
-        // requests_total metric should have count 1
-        Response metricsResponse = client.newCall(metricsRequest).execute();
-        Assertions.assertTrue(contains(metricsResponse.body().string(), "http_requests_total", "method=\"GET\"", "path=\"/kitchensink/rest/members\"", "status=\"200\"", "1.0"));
+        assertMetrics(client, "1.0");
 
         // Execute REST call again
         restResponse = client.newCall(restRequest).execute();
         Assertions.assertTrue(restResponse.body().string().contains("John Smith"));
 
-        // requests_total metric should have count 2
-        metricsResponse = client.newCall(metricsRequest).execute();
-        Assertions.assertTrue(contains(metricsResponse.body().string(), "http_requests_total", "method=\"GET\"", "path=\"/kitchensink/rest/members\"", "status=\"200\"", "2.0"));
+        assertMetrics(client, "2.0");
     }
 
-    /**
-     * Test if there is a line containing all fragments.
-     */
-    private boolean contains(String lines, String... fragments) {
-        for (String line : lines.split(System.lineSeparator())) {
-            for (String fragment : fragments) {
-                if (! line.contains(fragment)) {
-                    continue;
-                }
-                return true;
-            }
-        }
-        return false;
+    private void assertMetrics(OkHttpClient client, String nCalls) throws Exception {
+
+        Request metricsRequest = new Request.Builder().url(System.getProperty("promagent.url") + "/metrics").build();
+        Response metricsResponse = client.newCall(metricsRequest).execute();
+        String[] metricsLines = metricsResponse.body().string().split("\n");
+
+        String httpRequestsTotal = Arrays.stream(metricsLines)
+                .filter(m -> m.contains("http_requests_total"))
+                .filter(m -> m.contains("method=\"GET\""))
+                .filter(m -> m.contains("path=\"/wildfly-kitchensink/rest/members\""))
+                .filter(m -> m.contains("status=\"200\""))
+                .findFirst().orElseThrow(() -> new Exception("http_requests_total metric not found."));
+
+        assertTrue(httpRequestsTotal.endsWith(nCalls), "Value should be " + nCalls + " for " + httpRequestsTotal);
+
+        String sqlQueriesTotal = Arrays.stream(metricsLines)
+                .filter(m -> m.matches(".*?query=\"select .*?id .*?email .*?name .*?phone_number .*? from Member .*?\".*?"))
+                .filter(m -> m.contains("method=\"GET\""))
+                .filter(m -> m.contains("path=\"/wildfly-kitchensink/rest/members\""))
+                .findFirst().orElseThrow(() -> new Exception("sql_queries_total metric not found."));
+
+        assertTrue(sqlQueriesTotal.endsWith(nCalls), "Value should be " + nCalls + " for " + sqlQueriesTotal);
     }
 }

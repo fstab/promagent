@@ -16,10 +16,12 @@
     <!-- The Docker containers are built/started/stopped using the fabric8/docker-maven-plugin                 -->
     <!-- Use maven profiles to specify which tests are run:                                                    -->
     <!--                                                                                                       -->
-    <!-- mvn clean verify:                                                                                    -->
+    <!-- mvn clean verify:                                                                                     -->
     <!--     By default, no integration tests are run.                                                         -->
-    <!-- mvn clean verify -Pwildfly:                                                                          -->
+    <!-- mvn clean verify -Pwildfly:                                                                           -->
     <!--     Test against Wildfly 10.1.0.                                                                      -->
+    <!-- mvn clean verify -Pspring:                                                                            -->
+    <!--     Test against a Spring Boot demo application.                                                      -->
     <!--                                                                                                       -->
     <!-- If you run a profile for the first time, it will take quite long because the Docker images need to    -->
     <!-- be built. Once the images are done, running the profile will become considerably faster.              -->
@@ -56,7 +58,45 @@
                             <systemPropertyVariables>
                                 <!-- Map maven variables (set by the docker-maven-plugin) to system properties -->
                                 <!-- which in turn can be used in the test classes. -->
-                                <wildfly.url>http://${docker.host.address}:${wildfly.port}</wildfly.url>
+                                <deployment.url>http://${docker.host.address}:${wildfly.port}/wildfly-kitchensink</deployment.url>
+                                <promagent.url>http://${docker.host.address}:${promagent.port}</promagent.url>
+                            </systemPropertyVariables>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-tests</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>spring</id>
+            <properties>
+                <docker.filter>
+                    ${project.parent.artifactId}/oracle-jdk-8,
+                    ${project.parent.artifactId}/spring,
+                    ${project.parent.artifactId}/spring-promagent
+                </docker.filter>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/SpringIT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <!-- Map maven variables (set by the docker-maven-plugin) to system properties -->
+                                <!-- which in turn can be used in the test classes. -->
+                                <deployment.url>http://${docker.host.address}:${spring.port}</deployment.url>
                                 <promagent.url>http://${docker.host.address}:${promagent.port}</promagent.url>
                             </systemPropertyVariables>
                         </configuration>
@@ -155,10 +195,12 @@
                                 <runCmds>
                                     <run>curl --silent -O http://download.jboss.org/wildfly/10.1.0.Final/wildfly-10.1.0.Final.tar.gz</run>
                                     <run>tar xfz wildfly-10.1.0.Final.tar.gz</run>
+                                    <run>rm wildfly-10.1.0.Final.tar.gz</run>
                                     <run>git clone https://github.com/wildfly/quickstart.git</run>
                                     <run>cd quickstart; git checkout 10.x</run>
                                     <run>cd quickstart; mvn --batch-mode --projects kitchensink --also-make package</run>
-                                    <run>cp quickstart/kitchensink/target/wildfly-kitchensink.war wildfly-10.1.0.Final/standalone/deployments</run>
+                                    <run>mv quickstart/kitchensink/target/wildfly-kitchensink.war wildfly-10.1.0.Final/standalone/deployments</run>
+                                    <run>rm -rf ./quickstart ; rm -rf ./.m2</run>
                                 </runCmds>
                             </build>
                         </image>
@@ -217,6 +259,67 @@
                                 </log>
                             </run>
                         </image>
+
+                        <!-- promagent/spring: image with a Spring Boot demo application -->
+                        <image>
+                            <name>${project.parent.artifactId}/spring</name>
+                            <build>
+                                <from>${project.parent.artifactId}/oracle-jdk-8</from>
+                                <workdir>/home/promagent</workdir>
+                                <runCmds>
+                                    <run>git clone https://github.com/spring-guides/gs-accessing-data-rest.git</run>
+                                    <run>cd gs-accessing-data-rest/complete; mvn --batch-mode package</run>
+                                    <run>mv gs-accessing-data-rest/complete/target/gs-accessing-data-rest-*.jar .</run>
+                                    <run>rm -rf ./gs-accessing-data-rest ; rm -rf ./.m2</run>
+                                </runCmds>
+                            </build>
+                        </image>
+
+                        <!-- promagent/spring-promagent: promagent added, used for the SpringIT integration test -->
+                        <image>
+                            <name>${project.parent.artifactId}/spring-promagent</name>
+                            <build>
+                                <from>${project.parent.artifactId}/spring</from>
+                                <runCmds>
+                                    <run>
+                                        echo '#!/bin/bash' >> run.sh ; \
+                                        echo >> run.sh ; \
+                                        echo 'java -javaagent:promagent.jar=port=9300 -jar gs-accessing-data-rest-*.jar' >> run.sh ; \
+                                        chmod 755 run.sh ;
+                                    </run>
+                                </runCmds>
+                                <assembly>
+                                    <targetDir>/home/promagent</targetDir>
+                                    <user>promagent:promagent:promagent</user>
+                                    <inline>
+                                        <files>
+                                            <file>
+                                                <source>../promagent-dist/target/promagent.jar</source>
+                                                <outputDirectory>/</outputDirectory>
+                                            </file>
+                                        </files>
+                                    </inline>
+                                </assembly>
+                            </build>
+                            <run>
+                                <ports>
+                                    <!-- The docker-maven-plugin will set spring.port and promagent.port -->
+                                    <!-- ... to the dynamically allocated ports on the docker host. -->
+                                    <port>${spring.port}:8080</port>
+                                    <port>${promagent.port}:9300</port>
+                                </ports>
+                                <wait>
+                                    <log>Started Application in [0-9\.]+ seconds \(JVM running for [0-9\.]+\)</log>
+                                    <time>30000</time>
+                                </wait>
+                                <cmd>./run.sh</cmd>
+                                <log>
+                                    <enabled>true</enabled>
+                                    <prefix>[Spring Boot]</prefix>
+                                </log>
+                            </run>
+                        </image>
+
                     </images>
                 </configuration>
                 <executions>
