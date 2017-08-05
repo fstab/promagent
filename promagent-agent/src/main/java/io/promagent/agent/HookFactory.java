@@ -36,13 +36,11 @@ public class HookFactory {
         try {
             Set<String> classesAndInterfaces = getAllSuperClassesAndInterfaces(classToBeInstrumented);
             List<Hook> result = new ArrayList<>();
-            Class contextClass = classLoaders.currentClassLoader().loadClass(HOOK_PACKAGE + "Context");
             for (String hook : hooks) {
                 Class<?> hookClass = classLoaders.currentClassLoader().loadClass(hook);
                 for (String instruments : hookClass.getAnnotation(io.promagent.agent.annotations.Hook.class).instruments()) {
                     if (classesAndInterfaces.contains(instruments)) {
-                        Object context = contextClass.newInstance();
-                        result.add(new Hook(hookClass.getConstructor(contextClass).newInstance(context)));
+                        result.add(new Hook(hookClass.newInstance()));
                     }
                 }
             }

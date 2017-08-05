@@ -16,14 +16,13 @@ package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.agent.HookFactory;
+import io.promagent.internal.hooks.Metrics;
 import io.promagent.internal.metrics.Exporter;
 import io.promagent.internal.metrics.PromagentCollectorRegistry;
-import io.prometheus.client.CollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
-import net.bytebuddy.pool.TypePool;
 
 import javax.management.ObjectName;
 import java.lang.instrument.Instrumentation;
@@ -49,27 +48,11 @@ public class Promagent {
             HookConfig hookConfig = HookConfig.of(HookFactory.hooks);
             agentBuilder = applyHooks(agentBuilder, hookConfig);
             agentBuilder.installOn(inst);
-            for (String hook : HookFactory.hooks) {
-                initHookClass(hook, registry);
-            }
+            Metrics.init(registry);
             System.out.println("Promagent instrumenting the following classes or interfaces:");
             System.out.println(hookConfig);
         } catch (Throwable t) {
             t.printStackTrace();
-        }
-    }
-
-    /**
-     * Load Hook class and call static method init(registry)
-     */
-    // TODO: Im am currently trying to remove the runtime dependency on servlet-api. It is already removed for getting HookConfig, but it is not yet removed for calling initHookClass().
-    private static Class<?> initHookClass(String className, CollectorRegistry registry) {
-        try {
-            Class<?> hookClass = Promagent.class.getClassLoader().loadClass(className);
-            hookClass.getMethod("init", CollectorRegistry.class).invoke(null, registry);
-            return hookClass;
-        } catch (Exception e) {
-            throw new RuntimeException("Error initializing " + className + ": " + e.getMessage(), e);
         }
     }
 

@@ -21,9 +21,8 @@ import java.util.Set;
 
 /**
  * Thread local map that can be used to store context information, like the URL path of the current HTTP request.
- * The Context instance is injected to each Hook as constructor parameter.
  */
-public class Context {
+class Context {
 
     private static final ThreadLocal<Map<String, Object>> threadLocal = ThreadLocal.withInitial(HashMap::new);
 
@@ -40,15 +39,15 @@ public class Context {
         }
     }
 
-    <T> void put(Key<T> key, T value) {
+    static <T> void put(Key<T> key, T value) {
         threadLocal.get().put(key.keyString, value);
     }
 
-    <T> Optional<T> get(Key<T> key) {
+    static <T> Optional<T> get(Key<T> key) {
         return Optional.ofNullable((T) threadLocal.get().get(key.keyString));
     }
 
-    void clear(Key... keys) {
+    static void clear(Key... keys) {
         for (Key key : keys) {
             threadLocal.get().remove(key.keyString);
         }

@@ -34,37 +34,8 @@ import static io.promagent.internal.hooks.Context.*;
 })
 public class JdbcHook {
 
-    private static final String SQL_QUERIES_TOTAL = "sql_queries_total";
-    private static final String SQL_QUERY_DURATION = "sql_query_duration";
-
-    private final Context context;
     private long startTime = 0;
     private boolean relevant = false;
-
-    public JdbcHook(Context context) {
-        this.context = context;
-    }
-
-    public static void init(CollectorRegistry registry) {
-
-        // These example metrics are redundant, as the Summary already contains a count.
-        // However, I want to show two types of metrics in the example code.
-
-        Counter.build()
-                .name(SQL_QUERIES_TOTAL)
-                .labelNames("query", "method", "path")
-                .help("Total number of sql queries.")
-                .register(registry);
-
-        Summary.build()
-                .quantile(0.5, 0.05)   // Add 50th percentile (= median) with 5% tolerated error
-                .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
-                .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
-                .name(SQL_QUERY_DURATION)
-                .labelNames("query", "method", "path")
-                .help("Duration for serving the sql queries in seconds.")
-                .register(registry);
-    }
 
     private String stripValues(String query) {
         // We want the structure of the query as labels, not the actual values.
@@ -122,11 +93,11 @@ public class JdbcHook {
         if (relevant) {
             try {
                 double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                String method = context.get(SERVLET_HOOK_METHOD).orElse("no http context");
-                String path = context.get(SERVLET_HOOK_PATH).orElse("no http context");
+                String method = Context.get(SERVLET_HOOK_METHOD).orElse("no http context");
+                String path = Context.get(SERVLET_HOOK_PATH).orElse("no http context");
                 String query = stripValues(sql);
-                MetricsUtil.inc(SQL_QUERIES_TOTAL, query, method, path);
-                MetricsUtil.observe(duration, SQL_QUERY_DURATION, query, method, path);
+                MetricsUtil.inc(Metrics.SQL_QUERIES_TOTAL, query, method, path);
+                MetricsUtil.observe(duration, Metrics.SQL_QUERY_DURATION, query, method, path);
             } finally {
                 getRunningQueries().remove(sql);
             }
@@ -161,9 +132,9 @@ public class JdbcHook {
     // ---
 
     private Set<String> getRunningQueries() {
-        if (!context.get(JDBC_HOOK_QUERY).isPresent()) {
-            context.put(JDBC_HOOK_QUERY, new HashSet<>());
+        if (!Context.get(JDBC_HOOK_QUERY).isPresent()) {
+            Context.put(JDBC_HOOK_QUERY, new HashSet<>());
         }
-        return context.get(JDBC_HOOK_QUERY).get();
+        return Context.get(JDBC_HOOK_QUERY).get();
     }
 }
