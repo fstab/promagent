@@ -65,6 +65,7 @@ public class WildflyIT {
         assertTrue(httpRequestsTotal.endsWith(nCalls), "Value should be " + nCalls + " for " + httpRequestsTotal);
 
         String sqlQueriesTotal = Arrays.stream(metricsLines)
+                .filter(m -> m.contains("sql_queries_total"))
                 .filter(m -> m.matches(".*?query=\"select .*?id .*?email .*?name .*?phone_number .*? from Member .*?\".*?"))
                 .filter(m -> m.contains("method=\"GET\""))
                 .filter(m -> m.contains("path=\"/wildfly-kitchensink/rest/members\""))

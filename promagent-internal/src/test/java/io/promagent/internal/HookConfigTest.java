@@ -14,15 +14,45 @@
 
 package io.promagent.internal;
 
+import io.promagent.agent.annotations.After;
 import io.promagent.agent.annotations.Before;
 import io.promagent.agent.annotations.Hook;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 class HookConfigTest {
 
+    private List<Path> classesDir;
+
+    @BeforeEach
+    void setUp() {
+        classesDir = new ArrayList<>();
+        classesDir.add(Paths.get(this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath()));
+    }
+
+    @Hook(instruments = {
+            "javax.servlet.Servlet",
+            "javax.servlet.Filter"
+    })
+    private static class ServletTestHook {
+
+        @Before(method = {"service", "doFilter"})
+        public void before(ServletRequest request, ServletResponse response) {}
+
+        @After(method = {"service", "doFilter"})
+        public void after(ServletRequest request, ServletResponse response) throws Exception {}
+    }
+
     @Hook(instruments = "com.example.Some.class")
-    private static class TestHook {
+    private static class PrimitiveTypesTestHook {
 
         @Before(method = "arrayArgs")
         void before(Object[] a, int[] b, String[] c) {}
@@ -46,7 +76,7 @@ class HookConfigTest {
                 "javax.servlet.Servlet\n" +
                 "  * doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse)\n" +
                 "  * service(javax.servlet.ServletRequest, javax.servlet.ServletResponse)";
-        String actual = HookConfig.of("io.promagent.internal.hooks.ServletHook").toString();
+        String actual = HookConfig.from(classesDir).parse(ServletTestHook.class.getName()).toString();
         Assertions.assertEquals(expected, actual);
     }
 
@@ -58,19 +88,19 @@ class HookConfigTest {
                 "  * boxedArgs(java.lang.Boolean, java.lang.Character, java.lang.Byte, java.lang.Short, java.lang.Integer, java.lang.Float, java.lang.Long, java.lang.Double)\n" +
                 "  * noArgs()\n" +
                 "  * primitiveArgs(boolean, char, byte, short, int, float, long, double)";
-        String actual = HookConfig.of(TestHook.class.getName()).toString();
+        String actual = HookConfig.from(classesDir).parse(PrimitiveTypesTestHook.class.getName()).toString();
         Assertions.assertEquals(expected, actual);
     }
 
     @Test
     void testNoHook() throws ClassNotFoundException {
         // Use HookConfigTest as an example of a class that does not have any @Hook annotation.
-        String result = HookConfig.of(HookConfigTest.class.getName()).toString();
+        String result = HookConfig.from(classesDir).parse(HookConfigTest.class.getName()).toString();
         Assertions.assertEquals("", result);
     }
 
     @Test
     void testClassNotFound() throws ClassNotFoundException {
-        Assertions.assertThrows(ClassNotFoundException.class, () -> HookConfig.of("io.promagent.internal.hooks.NonExistingHook"));
+        Assertions.assertThrows(ClassNotFoundException.class, () -> HookConfig.from(classesDir).parse("io.promagent.internal.hooks.NonExistingHook"));
     }
 }

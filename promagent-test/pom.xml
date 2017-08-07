@@ -198,8 +198,10 @@
                                     <run>rm wildfly-10.1.0.Final.tar.gz</run>
                                     <run>git clone https://github.com/wildfly/quickstart.git</run>
                                     <run>cd quickstart; git checkout 10.x</run>
-                                    <run>cd quickstart; mvn --batch-mode --projects kitchensink --also-make package</run>
+                                    <run>cd quickstart; mvn --batch-mode --projects kitchensink,helloworld --also-make package</run>
                                     <run>mv quickstart/kitchensink/target/wildfly-kitchensink.war wildfly-10.1.0.Final/standalone/deployments</run>
+                                    <!-- add the helloworld example so that we can test if promagent works with multiple deployments -->
+                                    <run>mv quickstart/helloworld/target/wildfly-helloworld.war wildfly-10.1.0.Final/standalone/deployments</run>
                                     <run>rm -rf ./quickstart ; rm -rf ./.m2</run>
                                 </runCmds>
                             </build>

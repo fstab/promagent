@@ -12,21 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.internal.hooks;
+package io.promagent.hooks;
 
 import io.promagent.agent.annotations.After;
 import io.promagent.agent.annotations.Before;
 import io.promagent.agent.annotations.Hook;
+import io.promagent.internal.Context;
 import io.promagent.internal.metrics.MetricsUtil;
-import io.prometheus.client.CollectorRegistry;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Summary;
+import io.promagent.metrics.Metrics;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
-import static io.promagent.internal.hooks.Context.*;
 
 @Hook(instruments = {
         "java.sql.Statement",
@@ -93,8 +90,8 @@ public class JdbcHook {
         if (relevant) {
             try {
                 double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                String method = Context.get(SERVLET_HOOK_METHOD).orElse("no http context");
-                String path = Context.get(SERVLET_HOOK_PATH).orElse("no http context");
+                String method = Context.get(Context.SERVLET_HOOK_METHOD).orElse("no http context");
+                String path = Context.get(Context.SERVLET_HOOK_PATH).orElse("no http context");
                 String query = stripValues(sql);
                 MetricsUtil.inc(Metrics.SQL_QUERIES_TOTAL, query, method, path);
                 MetricsUtil.observe(duration, Metrics.SQL_QUERY_DURATION, query, method, path);
@@ -132,9 +129,9 @@ public class JdbcHook {
     // ---
 
     private Set<String> getRunningQueries() {
-        if (!Context.get(JDBC_HOOK_QUERY).isPresent()) {
-            Context.put(JDBC_HOOK_QUERY, new HashSet<>());
+        if (!Context.get(Context.JDBC_HOOK_QUERY).isPresent()) {
+            Context.put(Context.JDBC_HOOK_QUERY, new HashSet<>());
         }
-        return Context.get(JDBC_HOOK_QUERY).get();
+        return Context.get(Context.JDBC_HOOK_QUERY).get();
     }
 }

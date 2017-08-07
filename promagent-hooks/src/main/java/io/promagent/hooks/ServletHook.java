@@ -12,21 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.internal.hooks;
+package io.promagent.hooks;
 
 import io.promagent.agent.annotations.After;
 import io.promagent.agent.annotations.Before;
 import io.promagent.agent.annotations.Hook;
+import io.promagent.internal.Context;
 import io.promagent.internal.metrics.MetricsUtil;
+import io.promagent.metrics.Metrics;
 
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
-
-import static io.promagent.internal.hooks.Context.SERVLET_HOOK_METHOD;
-import static io.promagent.internal.hooks.Context.SERVLET_HOOK_PATH;
 
 @Hook(instruments = {
         "javax.servlet.Servlet",
@@ -56,21 +55,23 @@ public class ServletHook {
         // should be adapted depending on the actual paths in an application.
         // For the demo, we just replace all numbers with {id}.
 
-        return path.replaceAll("[0-9]+", "{id}");
+        return path
+                .replaceAll("[0-9]+", "{id}")
+                .replaceAll("\\?.*", ""); // Also remove path parameters, like "?jsessionid=..."
     }
 
     @Before(method = {"service", "doFilter"})
     public void before(ServletRequest request, ServletResponse response) {
         if (HttpServletRequest.class.isAssignableFrom(request.getClass()) && HttpServletResponse.class.isAssignableFrom(response.getClass())) {
             HttpServletRequest req = (HttpServletRequest) request;
-            if (Context.get(SERVLET_HOOK_METHOD).isPresent()) {
+            if (Context.get(Context.SERVLET_HOOK_METHOD).isPresent()) {
                 // This is a nested call, i.e. this Servlet or Filter is called from within another Servlet or Filter.
                 // We only instrument the outer-most call and ignore nested calls.
                 // Returning here will leave the variable relevant=false, so the @After method does not do anything.
                 return;
             }
-            Context.put(SERVLET_HOOK_METHOD, req.getMethod());
-            Context.put(SERVLET_HOOK_PATH, stripPathParameters(req.getRequestURI()));
+            Context.put(Context.SERVLET_HOOK_METHOD, req.getMethod());
+            Context.put(Context.SERVLET_HOOK_PATH, stripPathParameters(req.getRequestURI()));
             startTime = System.nanoTime();
             relevant = true;
         }
@@ -83,12 +84,12 @@ public class ServletHook {
             if (relevant) {
                 try {
                     double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                    String method = Context.get(SERVLET_HOOK_METHOD).get();
-                    String path = Context.get(SERVLET_HOOK_PATH).get();
+                    String method = Context.get(Context.SERVLET_HOOK_METHOD).get();
+                    String path = Context.get(Context.SERVLET_HOOK_PATH).get();
                     MetricsUtil.inc(Metrics.HTTP_REQUESTS_TOATAL, method, path, Integer.toString(resp.getStatus()));
                     MetricsUtil.observe(duration, Metrics.HTTP_REQUEST_DURATION, method, path, Integer.toString(resp.getStatus()));
                 } finally {
-                    Context.clear(SERVLET_HOOK_METHOD, SERVLET_HOOK_PATH);
+                    Context.clear(Context.SERVLET_HOOK_METHOD, Context.SERVLET_HOOK_PATH);
                 }
             }
         }

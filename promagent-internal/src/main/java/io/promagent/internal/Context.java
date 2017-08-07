@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.internal.hooks;
+package io.promagent.internal;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,15 +22,15 @@ import java.util.Set;
 /**
  * Thread local map that can be used to store context information, like the URL path of the current HTTP request.
  */
-class Context {
+public class Context {
 
     private static final ThreadLocal<Map<String, Object>> threadLocal = ThreadLocal.withInitial(HashMap::new);
 
-    static final Key<String> SERVLET_HOOK_METHOD = new Key<>("servlet.hook.method");
-    static final Key<String> SERVLET_HOOK_PATH = new Key<>("servlet.hook.path");
-    static final Key<Set<String>> JDBC_HOOK_QUERY = new Context.Key<>("jdbc.hook.query");
+    public static final Key<String> SERVLET_HOOK_METHOD = new Key<>("servlet.hook.method");
+    public static final Key<String> SERVLET_HOOK_PATH = new Key<>("servlet.hook.path");
+    public static final Key<Set<String>> JDBC_HOOK_QUERY = new Context.Key<>("jdbc.hook.query");
 
-    static class Key<T> {
+    public static class Key<T> {
 
         final String keyString;
 
@@ -39,15 +39,15 @@ class Context {
         }
     }
 
-    static <T> void put(Key<T> key, T value) {
+    public static <T> void put(Key<T> key, T value) {
         threadLocal.get().put(key.keyString, value);
     }
 
-    static <T> Optional<T> get(Key<T> key) {
+    public static <T> Optional<T> get(Key<T> key) {
         return Optional.ofNullable((T) threadLocal.get().get(key.keyString));
     }
 
-    static void clear(Key... keys) {
+    public static void clear(Key... keys) {
         for (Key key : keys) {
             threadLocal.get().remove(key.keyString);
         }

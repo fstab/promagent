@@ -17,7 +17,6 @@ package io.promagent.agent;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,35 +31,31 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The promagent.jar contains a lib/ directory with JARs from the promagent-internal module and its dependencies.
+ * The promagent.jar contains a lib/ directory with JARs from the promagent modules and their dependencies.
  * This class provides URLs to these JAR files.
  */
 class JarFiles {
 
-    // The separation between "hook JARs" and "dependency JARs" is still work in progress.
-    // The idea is to have one global class loader for the Prometheus client library (dependencyJars),
-    // because the Prometheus metric registry should be accessible from all deployments in the application server.
-    // The hook classes themselves should be loaded with one class loader per deployment, because hooks might
-    // reference classes from the deployment, so each hook class loader should have the current context
-    // class loader as its parent.
-    // The current implementation works for the ServletHook and JdbcHook, but there are still some TODOs,
-    // like making it easily extensible for other hooks, how to deal with the Byte buddy JAR, getting rid
-    // of the runtime dependency on servlet-api JAR, etc.
+    // The separation between "per deployment JARs" and "shared JARs" is done because
+    // in an application server some classes must be loaded for each deployment,
+    // while other classes can be shared across multiple deployments.
+    // Currently, only the "promagent-hooks" module is in the "per deployment JARs",
+    // all other modules and their dependencies are in the "shared JARs".
 
-    private final List<URL> hookJars; // The JAR file for the promagent-internal module.
-    private final List<URL> dependencyJars; // The JAR files for the Prometheus client and its dependencies.
+    private final List<Path> perDeploymentJars; // classes loaded for each deployment
+    private final List<Path> sharedJars; // classes shared across multiple deployments
 
-    private JarFiles(List<URL> hookJars, List<URL> dependencyJars) {
-        this.hookJars = Collections.unmodifiableList(hookJars);
-        this.dependencyJars = Collections.unmodifiableList(dependencyJars);
+    private JarFiles(List<Path> perDeploymentJars, List<Path> sharedJars) {
+        this.perDeploymentJars = Collections.unmodifiableList(perDeploymentJars);
+        this.sharedJars = Collections.unmodifiableList(sharedJars);
     }
 
-    public List<URL> getHookJars() {
-        return hookJars;
+    List<Path> getPerDeploymentJars() {
+        return perDeploymentJars;
     }
 
-    public List<URL> getDependencyJars() {
-        return dependencyJars;
+    List<Path> getSharedJars() {
+        return sharedJars;
     }
 
     /**
@@ -70,11 +65,10 @@ class JarFiles {
      * See https://bugs.openjdk.java.net/browse/JDK-4735639
      */
     static JarFiles extract() {
-        List<URL> hookJars = new ArrayList<>();
-        List<URL> dependencyJars = new ArrayList<>();
+        List<Path> perDeploymentJars = new ArrayList<>();
+        List<Path> sharedJars = new ArrayList<>();
         Path agentJar = findAgentJar();
         try (JarFile jarFile = new JarFile(agentJar.toFile())) {
-//            hookJars.add(agentJar.toUri().toURL());
             Path tmpDir = Files.createTempDirectory("promagent-");
             tmpDir.toFile().deleteOnExit();
             Enumeration<JarEntry> jarEntries = jarFile.entries();
@@ -83,14 +77,14 @@ class JarFiles {
                 if (jarEntry.getName().startsWith("lib/") && jarEntry.getName().endsWith(".jar")) {
                     Path tmpFile = tmpDir.resolve(jarEntry.getName().replaceAll(".*/", ""));
                     Files.copy(jarFile.getInputStream(jarEntry), tmpFile);
-                    if (jarEntry.getName().contains("promagent") || jarEntry.getName().contains("javax")) {
-                        hookJars.add(tmpFile.toUri().toURL());
+                    if (jarEntry.getName().contains("promagent-hooks")) {
+                        perDeploymentJars.add(tmpFile);
                     } else {
-                        dependencyJars.add(tmpFile.toUri().toURL());
+                        sharedJars.add(tmpFile);
                     }
                 }
             }
-            return new JarFiles(hookJars, dependencyJars);
+            return new JarFiles(perDeploymentJars, sharedJars);
         } catch (IOException e) {
             throw new RuntimeException("Failed to load promagent.jar: " + e.getMessage(), e);
         }

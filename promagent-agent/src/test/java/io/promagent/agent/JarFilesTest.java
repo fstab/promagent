@@ -20,10 +20,10 @@ import static io.promagent.agent.JarFiles.findAgentJarFromCmdline;
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class JarFilesTest {
+class JarFilesTest {
 
     @Test
-    public void testCmdlineParserWildfly() {
+    void testCmdlineParserWildfly() {
         // The command line arguments are taken from the Wildfly application server example.
         String[] cmdlineArgs = new String[]{
                 "-D[Standalone]",
@@ -38,7 +38,7 @@ public class JarFilesTest {
     }
 
     @Test
-    public void testCmdlineParserVersioned() {
+    void testCmdlineParserVersioned() {
         String[] cmdlineArgs = new String[] {
                 "-javaagent:promagent-1.0-SNAPSHOT.jar"
         };
@@ -46,7 +46,7 @@ public class JarFilesTest {
     }
 
     @Test()
-    public void testCmdlineParserFailed() {
+    void testCmdlineParserFailed() {
         String[] cmdlineArgs = new String[] {
                 "-javaagent:/some/other/agent.jar",
                 "-jar",

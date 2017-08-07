@@ -24,7 +24,7 @@ import java.util.Set;
  */
 public class HookFactory {
 
-    private static final String HOOK_PACKAGE = "io.promagent.internal.hooks.";
+    private static final String HOOK_PACKAGE = "io.promagent.hooks.";
 
     public static final String[] hooks = {
             HOOK_PACKAGE + "ServletHook",

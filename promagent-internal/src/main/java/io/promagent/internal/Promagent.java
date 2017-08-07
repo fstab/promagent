@@ -16,9 +16,9 @@ package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.agent.HookFactory;
-import io.promagent.internal.hooks.Metrics;
 import io.promagent.internal.metrics.Exporter;
 import io.promagent.internal.metrics.PromagentCollectorRegistry;
+import io.prometheus.client.CollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.matcher.ElementMatcher;
@@ -27,7 +27,9 @@ import net.bytebuddy.matcher.ElementMatchers;
 import javax.management.ObjectName;
 import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static net.bytebuddy.matcher.ElementMatchers.*;
@@ -45,14 +47,25 @@ public class Promagent {
             AgentBuilder agentBuilder = new AgentBuilder.Default()
                     .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
                     .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
-            HookConfig hookConfig = HookConfig.of(HookFactory.hooks);
+            List<Path> hookJars = ClassLoaderCache.getInstance().getPerDeploymentJars();
+            HookConfig hookConfig = HookConfig.from(hookJars).parse(HookFactory.hooks);
             agentBuilder = applyHooks(agentBuilder, hookConfig);
             agentBuilder.installOn(inst);
-            Metrics.init(registry);
+            initMetrics(registry);
             System.out.println("Promagent instrumenting the following classes or interfaces:");
             System.out.println(hookConfig);
         } catch (Throwable t) {
             t.printStackTrace();
+        }
+    }
+
+    private static void initMetrics(CollectorRegistry registry) {
+        String className = "io.promagent.metrics.Metrics";
+        try {
+            Class<?> metricsClass = Promagent.class.getClassLoader().loadClass(className);
+            metricsClass.getMethod("init", CollectorRegistry.class).invoke(null, registry);
+        } catch (Exception e) {
+            throw new RuntimeException("Error initializing " + className + ": " + e.getMessage(), e);
         }
     }
 

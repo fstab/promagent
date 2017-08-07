@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.internal.hooks;
+package io.promagent.metrics;
 
 import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
@@ -20,24 +20,30 @@ import io.prometheus.client.Summary;
 
 public class Metrics {
 
-    static final String HTTP_REQUESTS_TOATAL = "http_requests_total";
-    static final String HTTP_REQUEST_DURATION = "http_request_duration";
+    public static final String HTTP_REQUESTS_TOATAL = "http_requests_total";
+    public static final String HTTP_REQUEST_DURATION = "http_request_duration";
 
-    static final String SQL_QUERIES_TOTAL = "sql_queries_total";
-    static final String SQL_QUERY_DURATION = "sql_query_duration";
+    public static final String SQL_QUERIES_TOTAL = "sql_queries_total";
+    public static final String SQL_QUERY_DURATION = "sql_query_duration";
+
+    public static Counter httpRequestsTotal;
+    public static Summary httpRequestsDuration;
+
+    public static Counter sqlQueriesTotal;
+    public static Summary sqlQueriesDuration;
 
     public static void init(CollectorRegistry registry) {
 
         // These example metrics are redundant, as the Summary already contains a count.
         // However, I want to show two types of metrics in the example code.
 
-        Counter.build()
+        httpRequestsTotal = Counter.build()
                 .name(HTTP_REQUESTS_TOATAL)
                 .labelNames("method", "path", "status")
                 .help("Total number of http requests.")
                 .register(registry);
 
-        Summary.build()
+        httpRequestsDuration = Summary.build()
                 .quantile(0.5, 0.05)   // Add 50th percentile (= median) with 5% tolerated error
                 .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
                 .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
@@ -46,13 +52,13 @@ public class Metrics {
                 .help("Duration for serving the http requests in seconds.")
                 .register(registry);
 
-        Counter.build()
+        sqlQueriesTotal = Counter.build()
                 .name(SQL_QUERIES_TOTAL)
                 .labelNames("query", "method", "path")
                 .help("Total number of sql queries.")
                 .register(registry);
 
-        Summary.build()
+        sqlQueriesDuration = Summary.build()
                 .quantile(0.5, 0.05)   // Add 50th percentile (= median) with 5% tolerated error
                 .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
                 .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
