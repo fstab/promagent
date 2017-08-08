@@ -18,7 +18,6 @@ import io.promagent.agent.annotations.After;
 import io.promagent.agent.annotations.Before;
 import io.promagent.agent.annotations.Hook;
 import io.promagent.internal.Context;
-import io.promagent.internal.metrics.MetricsUtil;
 import io.promagent.metrics.Metrics;
 
 import javax.servlet.ServletRequest;
@@ -86,8 +85,8 @@ public class ServletHook {
                     double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
                     String method = Context.get(Context.SERVLET_HOOK_METHOD).get();
                     String path = Context.get(Context.SERVLET_HOOK_PATH).get();
-                    MetricsUtil.inc(Metrics.HTTP_REQUESTS_TOATAL, method, path, Integer.toString(resp.getStatus()));
-                    MetricsUtil.observe(duration, Metrics.HTTP_REQUEST_DURATION, method, path, Integer.toString(resp.getStatus()));
+                    Metrics.httpRequestsTotal.labels(method, path, Integer.toString(resp.getStatus())).inc();
+                    Metrics.httpRequestsDuration.labels(method, path, Integer.toString(resp.getStatus())).observe(duration);
                 } finally {
                     Context.clear(Context.SERVLET_HOOK_METHOD, Context.SERVLET_HOOK_PATH);
                 }

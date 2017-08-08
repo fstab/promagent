@@ -12,12 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.internal.metrics;
+package io.promagent.internal.jmx;
 
-import java.util.Map;
-
-public interface HistogramMBean {
-    void observe(double value, String... labelValues);
-
-    Map<Map<String, String>, Double> getValues();
+public interface ExporterMBean {
+    String getTextFormat();
 }

@@ -18,7 +18,6 @@ import io.promagent.agent.annotations.After;
 import io.promagent.agent.annotations.Before;
 import io.promagent.agent.annotations.Hook;
 import io.promagent.internal.Context;
-import io.promagent.internal.metrics.MetricsUtil;
 import io.promagent.metrics.Metrics;
 
 import java.util.HashSet;
@@ -93,8 +92,8 @@ public class JdbcHook {
                 String method = Context.get(Context.SERVLET_HOOK_METHOD).orElse("no http context");
                 String path = Context.get(Context.SERVLET_HOOK_PATH).orElse("no http context");
                 String query = stripValues(sql);
-                MetricsUtil.inc(Metrics.SQL_QUERIES_TOTAL, query, method, path);
-                MetricsUtil.observe(duration, Metrics.SQL_QUERY_DURATION, query, method, path);
+                Metrics.sqlQueriesTotal.labels(query, method, path).inc();
+                Metrics.sqlQueriesDuration.labels(query, method, path).observe(duration);
             } finally {
                 getRunningQueries().remove(sql);
             }

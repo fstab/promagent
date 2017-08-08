@@ -16,8 +16,8 @@ package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.agent.HookFactory;
-import io.promagent.internal.metrics.Exporter;
-import io.promagent.internal.metrics.PromagentCollectorRegistry;
+import io.promagent.internal.jmx.Exporter;
+import io.promagent.internal.jmx.PromagentCollectorRegistry;
 import io.prometheus.client.CollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;

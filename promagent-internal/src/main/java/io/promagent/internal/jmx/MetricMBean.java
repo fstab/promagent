@@ -12,25 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.internal.metrics;
+package io.promagent.internal.jmx;
 
 import java.util.Map;
 
-public class Summary implements SummaryMBean {
+public interface MetricMBean {
 
-    private final io.prometheus.client.Summary summary;
-
-    public Summary(io.prometheus.client.Summary summary) {
-        this.summary = summary;
-    }
-
-    @Override
-    public void observe(double value, String... labelValues) {
-        summary.labels(labelValues).observe(value);
-    }
-
-    @Override
-    public Map<Map<String, String>, Double> getValues() {
-        return MetricsUtil.getValues(summary);
-    }
+    /**
+     * Get the values in a representation that can be used in MXBeans in JMX.
+     * <p/>
+     * The result is a map of labels -> value.
+     * The labels themselves are represented as a key -> value map.
+     */
+    Map<Map<String, String>, Double> getValues();
 }
