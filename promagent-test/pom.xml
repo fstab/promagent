@@ -9,7 +9,7 @@
     </parent>
 
     <artifactId>promagent-test</artifactId>
-    <name>integration tests</name>
+    <name>promagent integration tests</name>
 
     <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
     <!-- This module tests promagent.jar with real application server environments using Docker containers     -->

@@ -8,7 +8,7 @@
     </parent>
 
     <artifactId>promagent-internal</artifactId>
-    <name>Shared internal Promagent classes</name>
+    <name>promagent-internal classes shared across deployments</name>
 
     <packaging>jar</packaging>
 

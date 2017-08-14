@@ -8,7 +8,7 @@
     </parent>
 
     <artifactId>promagent-agent</artifactId>
-    <name>Promagent classes visible by the system class loader</name>
+    <name>promagent-agent loaded from the system class loader</name>
 
     <packaging>jar</packaging>
 

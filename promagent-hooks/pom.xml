@@ -8,7 +8,7 @@
     </parent>
 
     <artifactId>promagent-hooks</artifactId>
-    <name>Per deployment internal Promagent classes</name>
+    <name>promagent-hooks classes loaded per deployment</name>
 
     <packaging>jar</packaging>
 
