@@ -14,6 +14,7 @@
 
 package io.promagent.internal;
 
+import io.promagent.agent.HookMetadata;
 import io.promagent.agent.annotations.After;
 import io.promagent.agent.annotations.Before;
 import io.promagent.agent.annotations.Hook;
@@ -23,19 +24,22 @@ import org.junit.jupiter.api.Test;
 
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
 
-class HookConfigTest {
+class HookMetadataParserTest {
 
-    private List<Path> classesDir;
+    private HookMetadataParser parser;
 
     @BeforeEach
     void setUp() {
-        classesDir = new ArrayList<>();
+        List<Path> classesDir = new ArrayList<>();
         classesDir.add(Paths.get(this.getClass().getProtectionDomain().getCodeSource().getLocation().getPath()));
+        this.parser = new HookMetadataParser(classesDir);
     }
 
     @Hook(instruments = {
@@ -68,39 +72,33 @@ class HookConfigTest {
     }
 
     @Test
-    void testServletHook() throws ClassNotFoundException {
+    void testServletHook() throws ClassNotFoundException, IOException {
         String expected = "" +
-                "javax.servlet.Filter\n" +
-                "  * doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse)\n" +
-                "  * service(javax.servlet.ServletRequest, javax.servlet.ServletResponse)\n" +
-                "javax.servlet.Servlet\n" +
+                "javax.servlet.Filter, javax.servlet.Servlet (" + ServletTestHook.class.getName() + "):\n" +
                 "  * doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse)\n" +
                 "  * service(javax.servlet.ServletRequest, javax.servlet.ServletResponse)";
-        String actual = HookConfig.from(classesDir).parse(ServletTestHook.class.getName()).toString();
-        Assertions.assertEquals(expected, actual);
+        SortedSet<HookMetadata> result = parser.parse(className -> className.equals(ServletTestHook.class.getName()));
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(expected, result.first().toString());
     }
 
     @Test
-    void testPrimitiveTypes() throws ClassNotFoundException {
+    void testPrimitiveTypes() throws ClassNotFoundException, IOException {
         String expected = "" +
-                "com.example.Some.class\n" +
+                "com.example.Some.class (" + PrimitiveTypesTestHook.class.getName() + "):\n" +
                 "  * arrayArgs(java.lang.Object[], int[], java.lang.String[])\n" +
                 "  * boxedArgs(java.lang.Boolean, java.lang.Character, java.lang.Byte, java.lang.Short, java.lang.Integer, java.lang.Float, java.lang.Long, java.lang.Double)\n" +
                 "  * noArgs()\n" +
                 "  * primitiveArgs(boolean, char, byte, short, int, float, long, double)";
-        String actual = HookConfig.from(classesDir).parse(PrimitiveTypesTestHook.class.getName()).toString();
-        Assertions.assertEquals(expected, actual);
+        SortedSet<HookMetadata> result = parser.parse(className -> className.equals(PrimitiveTypesTestHook.class.getName()));
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(expected, result.first().toString());
     }
 
     @Test
-    void testNoHook() throws ClassNotFoundException {
-        // Use HookConfigTest as an example of a class that does not have any @Hook annotation.
-        String result = HookConfig.from(classesDir).parse(HookConfigTest.class.getName()).toString();
-        Assertions.assertEquals("", result);
-    }
-
-    @Test
-    void testClassNotFound() throws ClassNotFoundException {
-        Assertions.assertThrows(ClassNotFoundException.class, () -> HookConfig.from(classesDir).parse("io.promagent.internal.hooks.NonExistingHook"));
+    void testNoHook() throws ClassNotFoundException, IOException {
+        // Use HookMetadataParserTest as an example of a class that does not have any @Hook annotation.
+        SortedSet<HookMetadata> result = parser.parse(className -> className.equals(HookMetadataParserTest.class.getName()));
+        Assertions.assertTrue(result.isEmpty());
     }
 }

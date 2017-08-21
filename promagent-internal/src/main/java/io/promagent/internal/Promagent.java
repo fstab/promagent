@@ -16,6 +16,7 @@ package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.agent.HookFactory;
+import io.promagent.agent.HookMetadata;
 import io.promagent.internal.jmx.Exporter;
 import io.promagent.internal.jmx.PromagentCollectorRegistry;
 import io.prometheus.client.CollectorRegistry;
@@ -28,9 +29,7 @@ import javax.management.ObjectName;
 import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
@@ -48,12 +47,15 @@ public class Promagent {
                     .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
                     .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
             List<Path> hookJars = ClassLoaderCache.getInstance().getPerDeploymentJars();
-            HookConfig hookConfig = HookConfig.from(hookJars).parse(HookFactory.hooks);
-            agentBuilder = applyHooks(agentBuilder, hookConfig);
+            SortedSet<HookMetadata> hookMetadata = new HookMetadataParser(hookJars).parse();
+            HookFactory.init(hookMetadata);
+            agentBuilder = applyHooks(agentBuilder, hookMetadata);
             agentBuilder.installOn(inst);
             initMetrics(registry);
             System.out.println("Promagent instrumenting the following classes or interfaces:");
-            System.out.println(hookConfig);
+            for (HookMetadata m : hookMetadata) {
+                System.out.println(m);
+            }
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -72,29 +74,31 @@ public class Promagent {
     /**
      * Add {@link ElementMatcher} for the hooks.
      */
-    private static AgentBuilder applyHooks(AgentBuilder agentBuilder, HookConfig hookConfig) {
-        for (HookConfig.ClassOrInterfaceConfig instruments : hookConfig.getInstrumentedClassesOrInterfaces()) {
+    private static AgentBuilder applyHooks(AgentBuilder agentBuilder, Collection<HookMetadata> hookMetadata) {
+        for (HookMetadata metadata : hookMetadata) {
             ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
-            for (HookConfig.MethodConfig method : instruments.getInstrumentedMethods()) {
+            for (HookMetadata.MethodSignature methodSignature : metadata.getMethods()) {
                 // If you are using Eclipse or Visual Studio Code and see a syntax error here, it could be this one:
                 // https://github.com/eclipse/eclipse.jdt.ls/issues/291
                 ElementMatcher.Junction<MethodDescription> junction = ElementMatchers
-                        .named(method.getMethodName())
+                        .named(methodSignature.getMethodName())
                         .and(not(isAbstract()))
                         .and(isPublic())
-                        .and(takesArguments(method.getParameterTypes().size()));
-                for (int i = 0; i < method.getParameterTypes().size(); i++) {
+                        .and(takesArguments(methodSignature.getParameterTypes().size()));
+                for (int i = 0; i < methodSignature.getParameterTypes().size(); i++) {
                     // TODO: Tested for Objects (javax.servlet.Servlet) and primitive types (int), but not for arrays and generics yet.
-                    junction = junction.and(takesArgument(i, hasSuperType(named(method.getParameterTypes().get(i)))));
+                    junction = junction.and(takesArgument(i, hasSuperType(named(methodSignature.getParameterTypes().get(i)))));
                 }
                 methodMatcher = methodMatcher.or(junction);
             }
-            agentBuilder = agentBuilder
-                    .type(ElementMatchers.hasSuperType(named(instruments.getClassOrInterfaceName())))
-                    .transform(new AgentBuilder.Transformer.ForAdvice()
-                            .include(ClassLoaderCache.getInstance().currentClassLoader())
-                            .advice(methodMatcher, PromagentAdvice.class.getName())
-                    );
+            for (String instruments : metadata.getInstruments()) {
+                agentBuilder = agentBuilder
+                        .type(ElementMatchers.hasSuperType(named(instruments)))
+                        .transform(new AgentBuilder.Transformer.ForAdvice()
+                                .include(ClassLoaderCache.getInstance().currentClassLoader())
+                                .advice(methodMatcher, PromagentAdvice.class.getName())
+                        );
+            }
         }
         return agentBuilder;
     }

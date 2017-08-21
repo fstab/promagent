@@ -14,34 +14,28 @@
 
 package io.promagent.agent;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Create an instance of a class annotated with @Hook and wrap it into a {@link Hook} instance.
  */
 public class HookFactory {
 
-    private static final String HOOK_PACKAGE = "io.promagent.hooks.";
+    public static SortedSet<HookMetadata> hookMetadata;
 
-    public static final String[] hooks = {
-            HOOK_PACKAGE + "ServletHook",
-            HOOK_PACKAGE + "JdbcHook"
-    };
+    public static void init(SortedSet<HookMetadata> hookMetadata) {
+        HookFactory.hookMetadata = hookMetadata;
+    }
 
     public static List<Hook> createHooks(Class<?> classToBeInstrumented) {
-        ClassLoaderCache classLoaders = ClassLoaderCache.getInstance();
+        ClassLoaderCache classLoaderCache = ClassLoaderCache.getInstance();
         try {
             Set<String> classesAndInterfaces = getAllSuperClassesAndInterfaces(classToBeInstrumented);
             List<Hook> result = new ArrayList<>();
-            for (String hook : hooks) {
-                Class<?> hookClass = classLoaders.currentClassLoader().loadClass(hook);
-                for (String instruments : hookClass.getAnnotation(io.promagent.agent.annotations.Hook.class).instruments()) {
-                    if (classesAndInterfaces.contains(instruments)) {
-                        result.add(new Hook(hookClass.newInstance()));
-                    }
+            for (HookMetadata metadata : hookMetadata) {
+                if(metadata.getInstruments().stream().anyMatch(classesAndInterfaces::contains)) {
+                    Class<?> hookClass = classLoaderCache.currentClassLoader().loadClass(metadata.getHookClassName());
+                    result.add(new Hook(hookClass.newInstance()));
                 }
             }
             return result;
