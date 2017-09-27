@@ -39,6 +39,8 @@ Of course, replacing path parameters and SQL values is application specific. Pro
 Spring Boot Demo
 ----------------
 
+_This demo runs with Java 8 and was not tested with Java 9 yet._
+
 Download and compile the [Promagent](https://github.com/fstab/promagent).
 
 ```bash
@@ -70,6 +72,8 @@ go to [http://localhost:9300/metrics](http://localhost:9300/metrics) to view the
 
 Wildfly Demo
 ------------
+
+_This demo runs with Java 8. For a Java 9 version, see [JAVA_9_DEMO.md](JAVA_9_DEMO.md)._
 
 Download and compile the [Promagent](https://github.com/fstab/promagent).
 
