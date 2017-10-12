@@ -92,8 +92,8 @@ public class JdbcHook {
                 String method = Context.get(Context.SERVLET_HOOK_METHOD).orElse("no http context");
                 String path = Context.get(Context.SERVLET_HOOK_PATH).orElse("no http context");
                 String query = stripValues(sql);
-                Metrics.sqlQueriesTotal.labels(query, method, path).inc();
-                Metrics.sqlQueriesDuration.labels(query, method, path).observe(duration);
+                Metrics.sqlQueriesTotal.labels(method, path, query).inc();
+                Metrics.sqlQueriesDuration.labels(method, path, query).observe(duration);
             } finally {
                 getRunningQueries().remove(sql);
             }

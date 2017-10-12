@@ -54,7 +54,7 @@ public class Metrics {
 
         sqlQueriesTotal = Counter.build()
                 .name(SQL_QUERIES_TOTAL)
-                .labelNames("query", "method", "path")
+                .labelNames("method", "path", "query")
                 .help("Total number of sql queries.")
                 .register(registry);
 
@@ -63,7 +63,7 @@ public class Metrics {
                 .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
                 .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
                 .name(SQL_QUERY_DURATION)
-                .labelNames("query", "method", "path")
+                .labelNames("method", "path", "query")
                 .help("Duration for serving the sql queries in seconds.")
                 .register(registry);
     }

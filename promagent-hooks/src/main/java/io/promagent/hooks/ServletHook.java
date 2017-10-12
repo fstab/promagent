@@ -55,7 +55,9 @@ public class ServletHook {
         // For the demo, we just replace all numbers with {id}.
 
         return path
-                .replaceAll("[0-9]+", "{id}")
+                .replaceAll("/[0-9]+", "/{id}")
+                .replaceAll("/;jsessionid=\\w*", "")
+                .replaceAll("/$", "")
                 .replaceAll("\\?.*", ""); // Also remove path parameters, like "?jsessionid=..."
     }
 
