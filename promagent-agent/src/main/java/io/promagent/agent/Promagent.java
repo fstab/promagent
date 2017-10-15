@@ -18,11 +18,12 @@ import java.lang.instrument.Instrumentation;
 
 /**
  * We want as little dependencies as possible on the system class loader,
- * so the agent just delegates to the real agent which is loaded using our own class loader.
+ * so the actual agent is loaded in its own class loader and this agent delegates to it.
  */
 public class Promagent {
     public static void premain(String agentArgs, Instrumentation inst) throws Exception {
-        Object realAgent = ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.internal.Promagent").newInstance();
-        realAgent.getClass().getMethod("premain", String.class, Instrumentation.class).invoke(realAgent, agentArgs, inst);
+        ClassLoader agentClassLoader = ClassLoaderCache.getInstance().currentClassLoader();
+        Class<?> agentClass = agentClassLoader.loadClass("io.promagent.internal.Promagent");
+        agentClass.getMethod("premain", String.class, Instrumentation.class).invoke(null, agentArgs, inst);
     }
 }
