@@ -14,10 +14,9 @@
 
 package io.promagent.internal;
 
-import io.promagent.agent.HookMetadata;
-import io.promagent.agent.HookMetadata.MethodSignature;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
+import io.promagent.internal.HookMetadata.MethodSignature;
 import net.bytebuddy.jar.asm.*;
 import org.apache.commons.io.IOUtils;
 

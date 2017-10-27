@@ -14,7 +14,7 @@
 
 package io.promagent.internal;
 
-import io.promagent.agent.Delegator;
+import io.promagent.agent.ClassLoaderCache;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -23,18 +23,25 @@ import static net.bytebuddy.asm.Advice.*;
 
 public class PromagentAdvice {
 
+    // TODO:
+    // Should we move this class into it's own maven module
+    // to make clear that it cannot reference other classes from promagent-internal?
+
     @OnMethodEnter
+    @SuppressWarnings("unchecked")
     public static List<Object> before(
             @This Object that,
             @Origin Method method,
             @AllArguments Object[] args
     ) {
         try {
-            List<Object> hooks = Delegator.createHookInstances(that, method);
-            for (Object hook : hooks) {
-                Delegator.invokeBefore(hook, method, args);
-            }
-            return hooks;
+            // The following code is equivalent to:
+            //     return Delegator.before(that, method, args);
+            // However, the Delegator class will not be available in the context of the instrumented method,
+            // so we must use our agent class loader to load the Delegator class and do the call via reflection.
+            Class<?> delegator = ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.internal.Delegator");
+            Method beforeMethod = delegator.getMethod("before", Object.class, Method.class, Object[].class);
+            return (List<Object>) beforeMethod.invoke(null, that, method, args);
         } catch (Exception e) {
             System.err.println("Error executing Prometheus hook on " + that.getClass().getSimpleName());
             e.printStackTrace();
@@ -50,11 +57,13 @@ public class PromagentAdvice {
             @AllArguments Object[] args
     ) {
         try {
-            if (hooks != null) {
-                for (Object hook : hooks) {
-                    Delegator.invokeAfter(hook, method, args);
-                }
-            }
+            // The following code is equivalent to:
+            //     Delegator.after(hooks, method, args);
+            // However, the Delegator class will not be available in the context of the instrumented method,
+            // so we must use our agent class loader to load the Delegator class and do the call via reflection.
+            Class<?> delegator = ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.internal.Delegator");
+            Method afterMethod = delegator.getMethod("after", List.class, Method.class, Object[].class);
+            afterMethod.invoke(null, hooks, method, args);
         } catch (Exception e) {
             System.err.println("Error executing Prometheus hook on " + that.getClass().getSimpleName());
             e.printStackTrace();

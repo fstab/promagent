@@ -24,7 +24,7 @@ import java.util.Map;
 
 /**
  * ClassLoaderCache stores the class loaders used for loading the Promagent modules,
- * i.e. promagent-hooks, promagent-metrics, promagent-internals, and their dependencies.
+ * i.e. promagent-hooks, promagent-metrics, promagent-annotations, promagent-internals, and their dependencies.
  * <p/>
  * For the Hooks (like ServletHook or JdbcHook) there is one class loader per deployment,
  * because hook classes may reference classes from the deployment,

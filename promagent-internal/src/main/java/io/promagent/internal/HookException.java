@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.agent;
+package io.promagent.internal;
 
 public class HookException extends RuntimeException {
 

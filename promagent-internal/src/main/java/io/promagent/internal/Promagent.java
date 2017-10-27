@@ -15,8 +15,6 @@
 package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
-import io.promagent.agent.Delegator;
-import io.promagent.agent.HookMetadata;
 import io.promagent.internal.jmx.Exporter;
 import io.promagent.internal.jmx.PromagentCollectorRegistry;
 import io.prometheus.client.CollectorRegistry;

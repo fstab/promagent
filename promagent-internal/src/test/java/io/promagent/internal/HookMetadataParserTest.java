@@ -14,7 +14,6 @@
 
 package io.promagent.internal;
 
-import io.promagent.agent.HookMetadata;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;

@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.agent;
+package io.promagent.internal;
+
+import io.promagent.agent.ClassLoaderCache;
+import io.promagent.annotations.After;
+import io.promagent.annotations.Before;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -20,27 +24,41 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Delegate calls from the PromagentAdvice to the actual Hooks.
+ * Delegator is called from the Byte Buddy Advice, and calls the Hook's @Before and @After methods.
  */
 public class Delegator {
 
-    private static final String ANNOTATION_PACKAGE = "io.promagent.annotations";
-    private static final String ANNOTATION_METHOD = "method";
-
     private static SortedSet<HookMetadata> hookMetadata;
-    private static Class<? extends Annotation> before;
-    private static Class<? extends Annotation> after;
 
     @SuppressWarnings("unchecked")
     public static void init(SortedSet<HookMetadata> hookMetadata) throws ClassNotFoundException {
         Delegator.hookMetadata = hookMetadata;
-        ClassLoader cl = ClassLoaderCache.getInstance().currentClassLoader();
-        before = (Class<? extends Annotation>) cl.loadClass(ANNOTATION_PACKAGE + ".Before");
-        after = (Class<? extends Annotation>) cl.loadClass(ANNOTATION_PACKAGE + ".After");
     }
 
     /**
-     * Create a new instance of each hook class satisfying the following criterea:
+     * Should be called from the Advice's @OnMethodEnter method. Returns the list of Hooks to be passed on to after()
+     */
+    public static List<Object> before(Object that, Method method, Object[] args) {
+        List<Object> hooks = Delegator.createHookInstances(that, method);
+        for (Object hook : hooks) {
+            Delegator.invokeBefore(hook, method, args);
+        }
+        return hooks;
+    }
+
+    /**
+     * Should be called from the Advice's @OnMethodExit method. First parameter is the list of hooks returned by before()
+     */
+    public static void after(List<Object> hooks, Method method, Object[] args) {
+        if (hooks != null) {
+            for (Object hook : hooks) {
+                Delegator.invokeAfter(hook, method, args);
+            }
+        }
+    }
+
+    /**
+     * Create a new instance of each hook class satisfying the following criteria:
      * <ul>
      *     <li>that.getClass() is assignable to the value of the Hook's instruments annotation
      *     <li>The name of the instrumented method and the number of arguments match.
@@ -50,7 +68,7 @@ public class Delegator {
      * be ignored when calling {@link #invokeBefore(Object, Method, Object...)}
      * and {@link #invokeAfter(Object, Method, Object...)}, so it's ok to include them here.
      */
-    public static List<Object> createHookInstances(Object that, Method method) {
+    private static List<Object> createHookInstances(Object that, Method method) {
         return hookMetadata.stream()
                 .filter(hook -> classOrInterfaceMatches(that.getClass(), hook))
                 .filter(hook -> methodNameAndNumArgsMatch(method, hook))
@@ -62,15 +80,15 @@ public class Delegator {
     /**
      * Invoke the matching Hook methods annotated with @Before
      */
-    public static void invokeBefore(Object hookInstance, Method method, Object... args) throws HookException {
-        invoke(before, hookInstance, method.getName(), args);
+    private static void invokeBefore(Object hookInstance, Method method, Object... args) throws HookException {
+        invoke(Before.class, hookInstance, method.getName(), args);
     }
 
     /**
      * Invoke the matching Hook methods annotated with @After
      */
-    public static void invokeAfter(Object hookInstance, Method method, Object... args) throws HookException {
-        invoke(after, hookInstance, method.getName(), args);
+    private static void invokeAfter(Object hookInstance, Method method, Object... args) throws HookException {
+        invoke(After.class, hookInstance, method.getName(), args);
     }
 
     private static boolean classOrInterfaceMatches(Class<?> classToBeInstrumented, HookMetadata hook) {
@@ -181,14 +199,16 @@ public class Delegator {
     }
 
     private static String[] getMethodNames(Annotation annotation) throws HookException {
-        if (before.isAssignableFrom(annotation.getClass()) || after.isAssignableFrom(annotation.getClass())) {
-            try {
-                return (String[]) annotation.getClass().getMethod(ANNOTATION_METHOD).invoke(annotation);
-            } catch (Exception e) {
-                throw new HookException("Failed to read @Before or @After annotation: " + e.getMessage(), e);
+        try {
+            if (Before.class.isAssignableFrom(annotation.getClass())) {
+                return ((Before) annotation).method();
+            } else if (After.class.isAssignableFrom(annotation.getClass())) {
+                return ((After) annotation).method();
+            } else {
+                return new String[]{};
             }
-        } else {
-            return new String[]{};
+        } catch (Exception e) {
+            throw new HookException("Failed to read @Before or @After annotation: " + e.getMessage(), e);
         }
     }
 
