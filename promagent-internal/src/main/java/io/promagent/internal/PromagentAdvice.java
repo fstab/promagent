@@ -14,8 +14,7 @@
 
 package io.promagent.internal;
 
-import io.promagent.agent.Hook;
-import io.promagent.agent.HookFactory;
+import io.promagent.agent.Delegator;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -25,19 +24,15 @@ import static net.bytebuddy.asm.Advice.*;
 public class PromagentAdvice {
 
     @OnMethodEnter
-    public static List<Hook> before(
+    public static List<Object> before(
             @This Object that,
             @Origin Method method,
             @AllArguments Object[] args
     ) {
         try {
-            List<Hook> hooks = HookFactory.createHooks(that.getClass());
-            if (hooks.isEmpty()) {
-                System.err.println("Error executing Prometheus hook on " + that.getClass().getSimpleName() + ": No hook implementation found.");
-                return null;
-            }
-            for (Hook hook : hooks) {
-                hook.before(method.getName(), args);
+            List<Object> hooks = Delegator.createHookInstances(that, method);
+            for (Object hook : hooks) {
+                Delegator.invokeBefore(hook, method, args);
             }
             return hooks;
         } catch (Exception e) {
@@ -49,15 +44,15 @@ public class PromagentAdvice {
 
     @OnMethodExit
     public static void after(
-            @Enter List<Hook> hooks,
+            @Enter List<Object> hooks,
             @This Object that,
             @Origin Method method,
             @AllArguments Object[] args
     ) {
         try {
             if (hooks != null) {
-                for (Hook hook : hooks) {
-                    hook.after(method.getName(), args);
+                for (Object hook : hooks) {
+                    Delegator.invokeAfter(hook, method, args);
                 }
             }
         } catch (Exception e) {

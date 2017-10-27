@@ -14,7 +14,7 @@
 
 package io.promagent.agent;
 
-public class HookException extends Exception {
+public class HookException extends RuntimeException {
 
     public HookException(String message) {
         super(message);

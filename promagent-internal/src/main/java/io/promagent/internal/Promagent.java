@@ -15,7 +15,7 @@
 package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
-import io.promagent.agent.HookFactory;
+import io.promagent.agent.Delegator;
 import io.promagent.agent.HookMetadata;
 import io.promagent.internal.jmx.Exporter;
 import io.promagent.internal.jmx.PromagentCollectorRegistry;
@@ -48,7 +48,7 @@ public class Promagent {
                     .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
             List<Path> hookJars = ClassLoaderCache.getInstance().getPerDeploymentJars();
             SortedSet<HookMetadata> hookMetadata = new HookMetadataParser(hookJars).parse();
-            HookFactory.init(hookMetadata);
+            Delegator.init(hookMetadata);
             agentBuilder = applyHooks(agentBuilder, hookMetadata);
             agentBuilder.installOn(inst);
             initMetrics(registry);
