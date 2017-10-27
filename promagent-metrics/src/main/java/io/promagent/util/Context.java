@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.internal;
+package io.promagent.util;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +21,12 @@ import java.util.Set;
 
 /**
  * Thread local map that can be used to store context information, like the URL path of the current HTTP request.
+ * <p/>
+ *
+ * TODO:
+ * The maven module promagent-metrics has a misleading name. It is not only for metrics, but for everything
+ * that is shared across hook classes, like for example this ThreadLocal.
+ * Maybe we can merge Metrics and Context and create some HookContext that contains metrics and other things.
  */
 public class Context {
 

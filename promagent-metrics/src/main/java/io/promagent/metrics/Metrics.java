@@ -18,6 +18,9 @@ import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Summary;
 
+/**
+ * TODO: See class comment on {@link io.promagent.util.Context}.
+ */
 public class Metrics {
 
     public static final String HTTP_REQUESTS_TOATAL = "http_requests_total";

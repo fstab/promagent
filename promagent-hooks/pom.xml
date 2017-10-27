@@ -28,13 +28,6 @@
             <scope>provided</scope> <!-- provided via the hook class loader -->
         </dependency>
 
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>promagent-internal</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope> <!-- provided via the hook class loader -->
-        </dependency>
-
         <!-- APIs to be instrumented -->
         <dependency>
             <groupId>javax.servlet</groupId>

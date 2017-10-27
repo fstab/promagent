@@ -17,7 +17,7 @@ package io.promagent.hooks;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
-import io.promagent.internal.Context;
+import io.promagent.util.Context;
 import io.promagent.metrics.Metrics;
 
 import java.util.HashSet;
