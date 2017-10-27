@@ -15,9 +15,9 @@
 package io.promagent.internal;
 
 import io.promagent.agent.HookMetadata;
-import io.promagent.agent.annotations.After;
-import io.promagent.agent.annotations.Before;
-import io.promagent.agent.annotations.Hook;
+import io.promagent.annotations.After;
+import io.promagent.annotations.Before;
+import io.promagent.annotations.Hook;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

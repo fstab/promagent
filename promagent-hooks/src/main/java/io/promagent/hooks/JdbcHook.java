@@ -14,9 +14,9 @@
 
 package io.promagent.hooks;
 
-import io.promagent.agent.annotations.After;
-import io.promagent.agent.annotations.Before;
-import io.promagent.agent.annotations.Hook;
+import io.promagent.annotations.After;
+import io.promagent.annotations.Before;
+import io.promagent.annotations.Hook;
 import io.promagent.internal.Context;
 import io.promagent.metrics.Metrics;
 

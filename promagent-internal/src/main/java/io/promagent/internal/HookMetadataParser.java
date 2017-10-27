@@ -16,21 +16,20 @@ package io.promagent.internal;
 
 import io.promagent.agent.HookMetadata;
 import io.promagent.agent.HookMetadata.MethodSignature;
-import io.promagent.agent.annotations.After;
-import io.promagent.agent.annotations.Before;
+import io.promagent.annotations.After;
+import io.promagent.annotations.Before;
 import net.bytebuddy.jar.asm.*;
 import org.apache.commons.io.IOUtils;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
@@ -96,7 +95,7 @@ class HookMetadataParser {
             classReader.accept(new ClassVisitor(Opcodes.ASM5) {
                 @Override
                 public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
-                    if (visible && typeEquals(desc, io.promagent.agent.annotations.Hook.class)) {
+                    if (visible && typeEquals(desc, io.promagent.annotations.Hook.class)) {
                         return new AnnotationValueCollector("instruments", hookMetadata::addInstruments, Opcodes.ASM5, super.visitAnnotation(desc, visible));
                     } else {
                         return super.visitAnnotation(desc, visible);

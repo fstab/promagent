@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  */
 public class Delegator {
 
-    private static final String ANNOTATION_PACKAGE = "io.promagent.agent.annotations";
+    private static final String ANNOTATION_PACKAGE = "io.promagent.annotations";
     private static final String ANNOTATION_METHOD = "method";
 
     private static SortedSet<HookMetadata> hookMetadata;

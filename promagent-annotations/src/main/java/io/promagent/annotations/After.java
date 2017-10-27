@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package io.promagent.agent.annotations;
+package io.promagent.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -20,12 +20,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * The @Hook annotation indicates that the annotated class implements instrumentation for a class or interface.
- * The "instruments" parameter is a list of classes or interfaces to be instrumented.
- * The annotated class should have methods annotated with @Before and @After that implement the actual instrumentation.
+ * The method annotated with @After is executed before exiting the instrumented method.
+ * The method annotated with @After must have exactly the same parameters as the instrumented method.
+ * The "method" parameter are the names of the instrumented methods.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface Hook {
-    String[] instruments();
+@Target(ElementType.METHOD)
+public @interface After {
+    String[] method();
 }
