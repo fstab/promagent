@@ -1,0 +1,9 @@
+sudo: required
+language: java
+jdk:
+  - oraclejdk8
+services:
+  - docker
+script:
+  - mvn clean verify -Pwildfly
+  - mvn clean verify -Pspring
