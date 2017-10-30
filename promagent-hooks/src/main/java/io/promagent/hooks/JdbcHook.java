@@ -17,8 +17,12 @@ package io.promagent.hooks;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
-import io.promagent.util.Context;
-import io.promagent.metrics.Metrics;
+import io.promagent.hookcontext.HookContext;
+import io.promagent.hookcontext.Key;
+import io.promagent.hookcontext.MetricDef;
+import io.promagent.hookcontext.MetricsStore;
+import io.prometheus.client.Counter;
+import io.prometheus.client.Summary;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -30,8 +34,43 @@ import java.util.concurrent.TimeUnit;
 })
 public class JdbcHook {
 
+    private final HookContext context;
+
+    private final Counter sqlQueriesTotal;
+    private final Summary sqlQueriesDuration;
+
+    private static final Key<Set<String>> JDBC_HOOK_QUERY = new Key<>("jdbc.hook.query");
+
     private long startTime = 0;
     private boolean relevant = false;
+
+    public JdbcHook(HookContext context) {
+
+        this.context = context;
+
+        MetricsStore metricsStore = context.getMetricsStore();
+
+        sqlQueriesTotal = metricsStore.createOrGet(new MetricDef<>(
+                "sql_queries_total",
+                registry -> Counter.build()
+                        .name("sql_queries_total")
+                        .labelNames("method", "path", "query")
+                        .help("Total number of sql queries.")
+                        .register(registry)
+        ));
+
+        sqlQueriesDuration = metricsStore.createOrGet(new MetricDef<>(
+                "sql_query_duration",
+                registry -> Summary.build()
+                        .quantile(0.5, 0.05)   // Add 50th percentile (= median) with 5% tolerated error
+                        .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
+                        .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
+                        .name("sql_query_duration")
+                        .labelNames("method", "path", "query")
+                        .help("Duration for serving the sql queries in seconds.")
+                        .register(registry)
+        ));
+    }
 
     private String stripValues(String query) {
         // We want the structure of the query as labels, not the actual values.
@@ -89,13 +128,16 @@ public class JdbcHook {
         if (relevant) {
             try {
                 double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                String method = Context.get(Context.SERVLET_HOOK_METHOD).orElse("no http context");
-                String path = Context.get(Context.SERVLET_HOOK_PATH).orElse("no http context");
+                String method = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_METHOD).orElse("no http context");
+                String path = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_PATH).orElse("no http context");
                 String query = stripValues(sql);
-                Metrics.sqlQueriesTotal.labels(method, path, query).inc();
-                Metrics.sqlQueriesDuration.labels(method, path, query).observe(duration);
+                sqlQueriesTotal.labels(method, path, query).inc();
+                sqlQueriesDuration.labels(method, path, query).observe(duration);
             } finally {
                 getRunningQueries().remove(sql);
+                if (context.getThreadLocal().get(JDBC_HOOK_QUERY).get().isEmpty()) {
+                    context.getThreadLocal().clear(JDBC_HOOK_QUERY);
+                }
             }
         }
     }
@@ -128,9 +170,9 @@ public class JdbcHook {
     // ---
 
     private Set<String> getRunningQueries() {
-        if (!Context.get(Context.JDBC_HOOK_QUERY).isPresent()) {
-            Context.put(Context.JDBC_HOOK_QUERY, new HashSet<>());
+        if (!context.getThreadLocal().get(JDBC_HOOK_QUERY).isPresent()) {
+            context.getThreadLocal().put(JDBC_HOOK_QUERY, new HashSet<>());
         }
-        return Context.get(Context.JDBC_HOOK_QUERY).get();
+        return context.getThreadLocal().get(JDBC_HOOK_QUERY).get();
     }
 }

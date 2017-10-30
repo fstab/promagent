@@ -17,6 +17,10 @@ package io.promagent.internal;
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
+import io.promagent.hookcontext.HookContext;
+import io.promagent.hookcontext.MetricsStore;
+import io.promagent.hookcontext.TypeSafeThreadLocal;
+import io.prometheus.client.CollectorRegistry;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -29,10 +33,13 @@ import java.util.stream.Collectors;
 public class Delegator {
 
     private static SortedSet<HookMetadata> hookMetadata;
+    private static HookContext hookContext;
 
-    @SuppressWarnings("unchecked")
-    public static void init(SortedSet<HookMetadata> hookMetadata) throws ClassNotFoundException {
+    static void init(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry) throws ClassNotFoundException {
         Delegator.hookMetadata = hookMetadata;
+        MetricsStore metricsStore = new MetricsStore(registry);
+        TypeSafeThreadLocal threadLocal = new TypeSafeThreadLocal(ThreadLocal.withInitial(HashMap::new));
+        hookContext = new HookContext(metricsStore, threadLocal);
     }
 
     /**
@@ -139,10 +146,13 @@ public class Delegator {
     }
 
     private static Object createHookInstance(Class<?> hookClass) {
+        String errMsg = "Failed to create new instance of hook " + hookClass.getSimpleName() + ": ";
         try {
-            return hookClass.newInstance();
+            return hookClass.getConstructor(HookContext.class).newInstance(hookContext);
+        } catch (NoSuchMethodException e) {
+            throw new HookException(errMsg + "Hook classes must have a public constructor with a single parameter of type " + HookContext.class.getSimpleName(), e);
         } catch (Exception e) {
-            throw new HookException("Failed to create new instance of hook " + hookClass.getSimpleName() + ": " + e.getMessage(), e);
+            throw new HookException(errMsg + e.getMessage(), e);
         }
     }
 

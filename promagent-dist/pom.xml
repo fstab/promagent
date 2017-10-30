@@ -30,11 +30,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>promagent-metrics</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>promagent-hooks</artifactId>
             <version>${project.version}</version>
         </dependency>

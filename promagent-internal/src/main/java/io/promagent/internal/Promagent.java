@@ -46,26 +46,15 @@ public class Promagent {
                     .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
             List<Path> hookJars = ClassLoaderCache.getInstance().getPerDeploymentJars();
             SortedSet<HookMetadata> hookMetadata = new HookMetadataParser(hookJars).parse();
-            Delegator.init(hookMetadata);
+            Delegator.init(hookMetadata, registry);
             agentBuilder = applyHooks(agentBuilder, hookMetadata);
             agentBuilder.installOn(inst);
-            initMetrics(registry);
             System.out.println("Promagent instrumenting the following classes or interfaces:");
             for (HookMetadata m : hookMetadata) {
                 System.out.println(m);
             }
         } catch (Throwable t) {
             t.printStackTrace();
-        }
-    }
-
-    private static void initMetrics(CollectorRegistry registry) {
-        String className = "io.promagent.metrics.Metrics";
-        try {
-            Class<?> metricsClass = Promagent.class.getClassLoader().loadClass(className);
-            metricsClass.getMethod("init", CollectorRegistry.class).invoke(null, registry);
-        } catch (Exception e) {
-            throw new RuntimeException("Error initializing " + className + ": " + e.getMessage(), e);
         }
     }
 

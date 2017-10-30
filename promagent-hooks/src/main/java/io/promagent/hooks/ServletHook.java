@@ -17,8 +17,12 @@ package io.promagent.hooks;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
-import io.promagent.util.Context;
-import io.promagent.metrics.Metrics;
+import io.promagent.hookcontext.HookContext;
+import io.promagent.hookcontext.Key;
+import io.promagent.hookcontext.MetricDef;
+import io.promagent.hookcontext.MetricsStore;
+import io.prometheus.client.Counter;
+import io.prometheus.client.Summary;
 
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -32,8 +36,44 @@ import java.util.concurrent.TimeUnit;
 })
 public class ServletHook {
 
+    private final HookContext context;
+
+    private final Counter httpRequestsTotal;
+    private final Summary httpRequestsDuration;
+
+    static final Key<String> SERVLET_HOOK_METHOD = new Key<>("servlet.hook.method");
+    static final Key<String> SERVLET_HOOK_PATH = new Key<>("servlet.hook.path");
+
     private long startTime = 0;
     private boolean relevant = false;
+
+    public ServletHook(HookContext context) {
+
+        this.context = context;
+
+        MetricsStore metricsStore = context.getMetricsStore();
+
+        httpRequestsTotal = metricsStore.createOrGet(new MetricDef<>(
+                "http_requests_total",
+                registry -> Counter.build()
+                        .name("http_requests_total")
+                        .labelNames("method", "path", "status")
+                        .help("Total number of http requests.")
+                        .register(registry)
+        ));
+
+        httpRequestsDuration = metricsStore.createOrGet(new MetricDef<>(
+                "http_request_duration",
+                registry -> Summary.build()
+                        .quantile(0.5, 0.05)   // Add 50th percentile (= median) with 5% tolerated error
+                        .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
+                        .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
+                        .name("http_request_duration")
+                        .labelNames("method", "path", "status")
+                        .help("Duration for serving the http requests in seconds.")
+                        .register(registry)
+        ));
+    }
 
     private String stripPathParameters(String path) {
 
@@ -65,14 +105,14 @@ public class ServletHook {
     public void before(ServletRequest request, ServletResponse response) {
         if (HttpServletRequest.class.isAssignableFrom(request.getClass()) && HttpServletResponse.class.isAssignableFrom(response.getClass())) {
             HttpServletRequest req = (HttpServletRequest) request;
-            if (Context.get(Context.SERVLET_HOOK_METHOD).isPresent()) {
+            if (context.getThreadLocal().get(SERVLET_HOOK_METHOD).isPresent()) {
                 // This is a nested call, i.e. this Servlet or Filter is called from within another Servlet or Filter.
                 // We only instrument the outer-most call and ignore nested calls.
                 // Returning here will leave the variable relevant=false, so the @After method does not do anything.
                 return;
             }
-            Context.put(Context.SERVLET_HOOK_METHOD, req.getMethod());
-            Context.put(Context.SERVLET_HOOK_PATH, stripPathParameters(req.getRequestURI()));
+            context.getThreadLocal().put(SERVLET_HOOK_METHOD, req.getMethod());
+            context.getThreadLocal().put(SERVLET_HOOK_PATH, stripPathParameters(req.getRequestURI()));
             startTime = System.nanoTime();
             relevant = true;
         }
@@ -85,12 +125,12 @@ public class ServletHook {
             if (relevant) {
                 try {
                     double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                    String method = Context.get(Context.SERVLET_HOOK_METHOD).get();
-                    String path = Context.get(Context.SERVLET_HOOK_PATH).get();
-                    Metrics.httpRequestsTotal.labels(method, path, Integer.toString(resp.getStatus())).inc();
-                    Metrics.httpRequestsDuration.labels(method, path, Integer.toString(resp.getStatus())).observe(duration);
+                    String method = context.getThreadLocal().get(SERVLET_HOOK_METHOD).get();
+                    String path = context.getThreadLocal().get(SERVLET_HOOK_PATH).get();
+                    httpRequestsTotal.labels(method, path, Integer.toString(resp.getStatus())).inc();
+                    httpRequestsDuration.labels(method, path, Integer.toString(resp.getStatus())).observe(duration);
                 } finally {
-                    Context.clear(Context.SERVLET_HOOK_METHOD, Context.SERVLET_HOOK_PATH);
+                    context.getThreadLocal().clear(SERVLET_HOOK_METHOD, SERVLET_HOOK_PATH);
                 }
             }
         }

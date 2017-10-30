@@ -28,7 +28,6 @@
     <modules>
         <module>promagent-agent</module>
         <module>promagent-hooks</module>
-        <module>promagent-metrics</module>
         <module>promagent-annotations</module>
         <module>promagent-internal</module>
         <module>promagent-exporter</module>
