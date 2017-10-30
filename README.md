@@ -141,22 +141,28 @@ Promagent supports three different ways of exporting metrics for the Prometheus 
   like [http://localhost:8080/promagent](http://localhost:8080/promagent).
 * All metrics are made available via JMX, so any JMX client can be used to access the metrics.
 
+Running Docker Tests
+--------------------
+
+The `promagent-test` module uses the `docker-maven-plugin` to create Docker images and run integration tests
+against Docker containers. In order to run the Wildfly tests, run `mvn verify -Pwildfly`, in order to run the
+Spring Boot tests, run `mvn verify -Pspring`.
+
 Status
 ------
 
 This is a demo project. The main goal is to learn the internals of bytecode manipulation and class loading in Java application servers. I am planning to work on the following:
 
 * Try it with more application servers ([Payara](http://www.payara.fish/), [TomEE](http://tomee.apache.org/)) and adjust the code if necessary.
-* Add automated test, preferably integration tests that run an application server in a Docker container and check if the metrics are collected as expected.
+* This project could become a library and a Maven plugin. The goal would be that you include a Maven dependency like `promagent-lib` and write your hooks, and the Maven plugin takes care of creating an agent JAR.
 * Write documentation about the internal implementation, mainly the bytecode manipulation and class loading aspects.
 
 I am currently not planning to add a large number of out-of-the-box metrics. If you want to extend Promagent with your own metrics, do the following:
 
-* Clone this project on [GitHub](https://github.com/fstab/promagent/).
-* Copy the `ServletHook` or `JdbcHook` as a template for your own hook class.
-* Add your hook class to the list of hooks in the `HookFactory`.
-* In your hook class, adapt the `@Hook`, `@Before` and `@After` annotations as well as the `init()`, `before()` and `after()` methods.
-* Of course, I am always happy to see people using this code. So if you like, please open a GitHub Issue and say "Hello" (GitHub Issues are not only for reporting problems, they are useful for any communication).
+1. Clone this project on [GitHub](https://github.com/fstab/promagent/).
+2. Copy the `ServletHook` or `JdbcHook` as a template for your own hook class.
+
+I am always happy to see people using this code. So if you like, please open a GitHub Issue and say "Hello" (GitHub Issues are not only for reporting problems, they are useful for any communication).
 
 For examples of methods you might want to instrument, look at related projects, like [inspectIT](http://www.inspectit.rocks/) (hooks are configured [here](https://github.com/inspectIT/inspectIT/tree/master/inspectit.server/src/main/external-resources/ci/profiles/common)) or [stagemonitor](http://www.stagemonitor.org/).
 
