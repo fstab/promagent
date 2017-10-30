@@ -7,8 +7,8 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>promagent-annotations</artifactId>
-    <name>promagent-annotations hook annotations</name>
+    <artifactId>promagent-lib</artifactId>
+    <name>promagent-lib library for implementing hooks</name>
 
     <packaging>jar</packaging>
 

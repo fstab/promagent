@@ -25,7 +25,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>promagent-annotations</artifactId>
+            <artifactId>promagent-lib</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

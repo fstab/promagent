@@ -23,7 +23,7 @@
 
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>promagent-annotations</artifactId>
+            <artifactId>promagent-lib</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope> <!-- provided via the system class loader -->
         </dependency>
