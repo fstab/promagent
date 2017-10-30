@@ -166,11 +166,11 @@
                                     <run>apt-get install -y curl git neovim sudo</run>
                                     <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz</run>
                                     <run>tar xfz jdk-8u131-linux-x64.tar.gz</run>
-                                    <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.5.0/binaries/apache-maven-3.5.0-bin.tar.gz</run>
-                                    <run>tar xfz apache-maven-3.5.0-bin.tar.gz</run>
+                                    <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.5.2/binaries/apache-maven-3.5.2-bin.tar.gz</run>
+                                    <run>tar xfz apache-maven-3.5.2-bin.tar.gz</run>
                                     <run>
                                         echo 'export JAVA_HOME="/opt/jdk1.8.0_131"' >> /etc/profile.d/java.sh ; \
-                                        echo 'export MAVEN_HOME="/opt/apache-maven-3.5.0"' >> /etc/profile.d/java.sh ; \
+                                        echo 'export MAVEN_HOME="/opt/apache-maven-3.5.2"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$MAVEN_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ;
                                     </run>
@@ -180,8 +180,8 @@
                                 <user>promagent</user>
                                 <env>
                                     <JAVA_HOME>/opt/jdk1.8.0_131</JAVA_HOME>
-                                    <MAVEN_HOME>/opt/apache-maven-3.5.0</MAVEN_HOME>
-                                    <PATH>/opt/jdk1.8.0_131/bin:/opt/apache-maven-3.5.0/bin:$PATH</PATH>
+                                    <MAVEN_HOME>/opt/apache-maven-3.5.2</MAVEN_HOME>
+                                    <PATH>/opt/jdk1.8.0_131/bin:/opt/apache-maven-3.5.2/bin:$PATH</PATH>
                                 </env>
                             </build>
                         </image>
