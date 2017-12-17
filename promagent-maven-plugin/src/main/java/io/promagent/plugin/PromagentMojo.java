@@ -44,26 +44,20 @@ public class PromagentMojo extends AbstractMojo {
     @Parameter(property = "project.build.directory", readonly = true)
     private String outputDirectory;
 
-    @Parameter(property = "project.build.finalName", readonly = true)
-    private String finalName;
-
-    @Parameter(defaultValue = "${plugin.artifacts}")
-    private List<Artifact> pluginArtifacts;
-
     @Override
     public void execute() throws MojoExecutionException {
 
         AgentDependencies agentDependencies = AgentDependencies.init(pluginDescriptor);
 
         try (AgentJar agentJar = AgentJar.create(outputDirectory, makeAgentJarName())) {
-            // TODO: Manifest
             // Add extracted agent classes
             agentJar.extractJar(agentDependencies.getAgentArtifact().getFile(), new ManifestTransformer(pluginDescriptor));
             // Add project jar
+            agentDependencies.assertNoConflict(project.getArtifact());
             agentJar.addFile(project.getArtifact().getFile(), PER_DEPLOYMENT_JARS);
             // Add project dependencies
             for (Artifact artifact : project.getArtifacts()) {
-                // TODO: Check for version conflicts and duplicates with agentRuntimeDependencies
+                agentDependencies.assertNoConflict(artifact);
                 agentJar.addFile(artifact.getFile(), SHARED_JARS);
             }
             // Add agent internal jars
