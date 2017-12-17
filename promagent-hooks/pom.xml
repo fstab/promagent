@@ -16,7 +16,7 @@
 
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>promagent-lib</artifactId>
+            <artifactId>promagent-lib</artifactId><!-- TODO rename to API ? -->
             <version>${project.version}</version>
             <scope>provided</scope> <!-- provided via the system class loader -->
         </dependency>
@@ -30,4 +30,23 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.promagent</groupId>
+                <artifactId>promagent-maven-plugin</artifactId>
+                <version>1.0-SNAPSHOT</version>
+                <executions>
+                <execution>
+                    <id>promagent</id>
+                    <phase>package</phase>
+                    <goals>
+                        <goal>build</goal>
+                    </goals>
+                </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

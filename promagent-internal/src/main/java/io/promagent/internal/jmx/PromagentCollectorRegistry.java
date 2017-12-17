@@ -59,4 +59,8 @@ public class PromagentCollectorRegistry extends CollectorRegistry {
                     "You should adapt the Promagent accordingly.", e);
         }
     }
+
+    public void registerNoJmx(Collector collector) {
+        super.register(collector);
+    }
 }

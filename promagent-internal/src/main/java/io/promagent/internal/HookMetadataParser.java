@@ -38,7 +38,7 @@ import java.util.zip.ZipFile;
  * Inspect all hook classes in a JAR file and load the metadata from the @Hook, @Before, and @After annotations.
  * <p/>
  * The tricky part is that we cannot create an instance of the hook classes, because they might reference
- * classes that are not available in the agent's premain phase. We need to parse the metadata without instanciating
+ * classes that are not available in the agent's premain phase. We need to parse the metadata without instantiating
  * the hook classes.
  */
 class HookMetadataParser {

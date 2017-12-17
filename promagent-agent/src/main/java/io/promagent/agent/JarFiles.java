@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Matcher;
@@ -68,26 +69,43 @@ class JarFiles {
         List<Path> perDeploymentJars = new ArrayList<>();
         List<Path> sharedJars = new ArrayList<>();
         Path agentJar = findAgentJar();
-        try (JarFile jarFile = new JarFile(agentJar.toFile())) {
+        List<Path> extractedJars;
+        try {
             Path tmpDir = Files.createTempDirectory("promagent-");
             tmpDir.toFile().deleteOnExit();
-            Enumeration<JarEntry> jarEntries = jarFile.entries();
-            while (jarEntries.hasMoreElements()) {
-                JarEntry jarEntry = jarEntries.nextElement();
-                if (jarEntry.getName().startsWith("lib/") && jarEntry.getName().endsWith(".jar")) {
-                    Path tmpFile = tmpDir.resolve(jarEntry.getName().replaceAll(".*/", ""));
-                    Files.copy(jarFile.getInputStream(jarEntry), tmpFile);
-                    if (jarEntry.getName().contains("promagent-hooks")) {
-                        perDeploymentJars.add(tmpFile);
-                    } else {
-                        sharedJars.add(tmpFile);
-                    }
-                }
-            }
-            return new JarFiles(perDeploymentJars, sharedJars);
+            extractedJars = unzip(agentJar, tmpDir, entry -> entry.getName().endsWith(".jar"));
         } catch (IOException e) {
             throw new RuntimeException("Failed to load promagent.jar: " + e.getMessage(), e);
         }
+        for (Path jar : extractedJars) {
+            if (jar.getParent().getFileName().toString().equals("per-deployment-jars")) {
+                perDeploymentJars.add(jar);
+            } else {
+                sharedJars.add(jar);
+            }
+        }
+        return new JarFiles(perDeploymentJars, sharedJars);
+    }
+
+    private static List<Path> unzip(Path jarFile, Path destDir, Predicate<JarEntry> filter) throws IOException {
+        List<Path> result = new ArrayList<>();
+        try (JarFile agentJar = new JarFile(jarFile.toFile())) {
+            Enumeration<JarEntry> jarEntries = agentJar.entries();
+            while (jarEntries.hasMoreElements()) {
+                JarEntry jarEntry = jarEntries.nextElement();
+                if (filter.test(jarEntry)) {
+                    Path destFile = destDir.resolve(jarEntry.getName());
+                    if (!destFile.getParent().toFile().exists()) {
+                        if (!destFile.getParent().toFile().mkdirs()) {
+                            throw new IOException("Failed to make directory: " + destFile.getParent());
+                        }
+                    }
+                    Files.copy(agentJar.getInputStream(jarEntry), destFile);
+                    result.add(destFile);
+                }
+            }
+        }
+        return result;
     }
 
     private static Path findAgentJar() {

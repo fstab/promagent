@@ -17,6 +17,7 @@ package io.promagent.internal;
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.internal.jmx.Exporter;
 import io.promagent.internal.jmx.PromagentCollectorRegistry;
+import io.prometheus.client.Collector;
 import io.prometheus.client.CollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;
@@ -53,6 +54,11 @@ public class Promagent {
             for (HookMetadata m : hookMetadata) {
                 System.out.println(m);
             }
+
+            // TODO
+            io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
+            registry.registerNoJmx(jmxCollector);
+
         } catch (Throwable t) {
             t.printStackTrace();
         }
