@@ -63,7 +63,7 @@ class AgentDependencies {
         List<ExpectedDependency> expectedDependencies = Arrays.asList(
                 new ExpectedDependency(pluginGroupId, "promagent-agent"),
                 new ExpectedDependency(pluginGroupId, "promagent-internal"),
-                new ExpectedDependency(pluginGroupId, "promagent-lib"),
+                new ExpectedDependency(pluginGroupId, "promagent-api"),
                 new ExpectedDependency("io.prometheus", "simpleclient_common"),
                 new ExpectedDependency("io.prometheus", "simpleclient"),
                 new ExpectedDependency("net.bytebuddy", "byte-buddy"),

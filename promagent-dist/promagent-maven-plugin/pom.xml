@@ -30,7 +30,7 @@
 
         <dependency>
             <groupId>io.promagent</groupId>
-            <artifactId>promagent-lib</artifactId>
+            <artifactId>promagent-api</artifactId>
             <version>1.0-SNAPSHOT</version>
             <scope>runtime</scope>
         </dependency>

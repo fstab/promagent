@@ -2,129 +2,43 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>io.promagent</groupId>
-        <artifactId>promagent</artifactId>
-        <version>1.0-SNAPSHOT</version>
-    </parent>
+    <groupId>io.promagent</groupId>
+    <artifactId>promagent-example</artifactId>
+    <version>1.0-SNAPSHOT</version>
 
-    <artifactId>promagent-test</artifactId>
-    <name>promagent integration tests</name>
+    <name>promagent example project</name>
 
-    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
-    <!-- This module tests promagent.jar with real application server environments using Docker containers     -->
-    <!-- The Docker containers are built/started/stopped using the fabric8/docker-maven-plugin                 -->
-    <!-- Use maven profiles to specify which tests are run:                                                    -->
-    <!--                                                                                                       -->
-    <!-- mvn clean verify:                                                                                     -->
-    <!--     By default, no integration tests are run.                                                         -->
-    <!-- mvn clean verify -Pwildfly:                                                                           -->
-    <!--     Test against Wildfly 10.1.0.                                                                      -->
-    <!-- mvn clean verify -Pspring:                                                                            -->
-    <!--     Test against a Spring Boot demo application.                                                      -->
-    <!--                                                                                                       -->
-    <!-- If you run a profile for the first time, it will take quite long because the Docker images need to    -->
-    <!-- be built. Once the images are done, running the profile will become considerably faster.              -->
-    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+    <packaging>jar</packaging>
 
-    <profiles>
-        <profile>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <id>none</id>
-            <properties>
-                <docker.filter>skip-docker-tests</docker.filter>
-            </properties>
-        </profile>
-        <profile>
-            <id>wildfly</id>
-            <properties>
-                <docker.filter>
-                    ${project.parent.artifactId}/oracle-jdk-8,
-                    ${project.parent.artifactId}/wildfly-kitchensink,
-                    ${project.parent.artifactId}/wildfly-kitchensink-promagent
-                </docker.filter>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <configuration>
-                            <includes>
-                                <include>**/WildflyIT.java</include>
-                            </includes>
-                            <systemPropertyVariables>
-                                <!-- Map maven variables (set by the docker-maven-plugin) to system properties -->
-                                <!-- which in turn can be used in the test classes. -->
-                                <deployment.url>http://${docker.host.address}:${wildfly.port}/wildfly-kitchensink</deployment.url>
-                                <promagent.url>http://${docker.host.address}:${promagent.port}</promagent.url>
-                            </systemPropertyVariables>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>integration-tests</id>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                    <goal>verify</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>spring</id>
-            <properties>
-                <docker.filter>
-                    ${project.parent.artifactId}/oracle-jdk-8,
-                    ${project.parent.artifactId}/spring,
-                    ${project.parent.artifactId}/spring-promagent
-                </docker.filter>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-failsafe-plugin</artifactId>
-                        <configuration>
-                            <includes>
-                                <include>**/SpringIT.java</include>
-                            </includes>
-                            <systemPropertyVariables>
-                                <!-- Map maven variables (set by the docker-maven-plugin) to system properties -->
-                                <!-- which in turn can be used in the test classes. -->
-                                <deployment.url>http://${docker.host.address}:${spring.port}</deployment.url>
-                                <promagent.url>http://${docker.host.address}:${promagent.port}</promagent.url>
-                            </systemPropertyVariables>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <id>integration-tests</id>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                    <goal>verify</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.outputEncoding>UTF-8</project.build.outputEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
 
     <dependencies>
+
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>promagent-dist</artifactId>
+            <artifactId>promagent-api</artifactId>
             <version>${project.version}</version>
+            <scope>provided</scope> <!-- provided via the system class loader -->
         </dependency>
 
+        <!-- APIs to be instrumented -->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
+            <scope>provided</scope><!-- provided by the Servlet container -->
+        </dependency>
+
+        <!-- tests -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
+            <version>5.0.0-RC2</version>
             <scope>test</scope>
         </dependency>
 
@@ -134,6 +48,7 @@
             <version>2.7.5</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -148,6 +63,22 @@
         </pluginManagement>
         <plugins>
             <plugin>
+                <groupId>io.promagent</groupId>
+                <artifactId>promagent-maven-plugin</artifactId>
+                <version>1.0-SNAPSHOT</version>
+                <executions>
+                    <execution>
+                        <id>promagent</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <plugin>
                 <groupId>io.fabric8</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
                 <version>0.21.0</version>
@@ -157,19 +88,19 @@
 
                         <!-- promagent/oracle-jdk-8: base image for all tests -->
                         <image>
-                            <name>${project.parent.artifactId}/oracle-jdk-8</name>
+                            <name>${project.artifactId}/oracle-jdk-8</name>
                             <build>
                                 <from>ubuntu:17.04</from>
                                 <workdir>/opt</workdir>
                                 <runCmds>
                                     <run>apt-get update ; apt-get upgrade -y</run>
                                     <run>apt-get install -y curl git neovim sudo</run>
-                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz</run>
-                                    <run>tar xfz jdk-8u131-linux-x64.tar.gz</run>
+                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u151-b12/e758a0de34e24606bca991d704f6dcbf/jdk-8u151-linux-x64.tar.gz</run>
+                                    <run>tar xfz jdk-8u151-linux-x64.tar.gz</run>
                                     <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.5.2/binaries/apache-maven-3.5.2-bin.tar.gz</run>
                                     <run>tar xfz apache-maven-3.5.2-bin.tar.gz</run>
                                     <run>
-                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_131"' >> /etc/profile.d/java.sh ; \
+                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_151"' >> /etc/profile.d/java.sh ; \
                                         echo 'export MAVEN_HOME="/opt/apache-maven-3.5.2"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$MAVEN_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ;
@@ -179,18 +110,18 @@
                                 </runCmds>
                                 <user>promagent</user>
                                 <env>
-                                    <JAVA_HOME>/opt/jdk1.8.0_131</JAVA_HOME>
+                                    <JAVA_HOME>/opt/jdk1.8.0_151</JAVA_HOME>
                                     <MAVEN_HOME>/opt/apache-maven-3.5.2</MAVEN_HOME>
-                                    <PATH>/opt/jdk1.8.0_131/bin:/opt/apache-maven-3.5.2/bin:$PATH</PATH>
+                                    <PATH>/opt/jdk1.8.0_151/bin:/opt/apache-maven-3.5.2/bin:$PATH</PATH>
                                 </env>
                             </build>
                         </image>
 
                         <!-- promagent/wildfly-kitchensink: image with wildfly and the kitchensink sample deployment -->
                         <image>
-                            <name>${project.parent.artifactId}/wildfly-kitchensink</name>
+                            <name>${project.artifactId}/wildfly-kitchensink</name>
                             <build>
-                                <from>${project.parent.artifactId}/oracle-jdk-8</from>
+                                <from>${project.artifactId}/oracle-jdk-8</from>
                                 <workdir>/home/promagent</workdir>
                                 <runCmds>
                                     <run>curl --silent -O http://download.jboss.org/wildfly/10.1.0.Final/wildfly-10.1.0.Final.tar.gz</run>
@@ -209,9 +140,9 @@
 
                         <!-- promagent/wildfly-kitchensink-promagent: promagent added, used for the WildflyIT integration test -->
                         <image>
-                            <name>${project.parent.artifactId}/wildfly-kitchensink-promagent</name>
+                            <name>${project.artifactId}/wildfly-kitchensink-promagent</name>
                             <build>
-                                <from>${project.parent.artifactId}/wildfly-kitchensink</from>
+                                <from>${project.artifactId}/wildfly-kitchensink</from>
                                 <runCmds>
                                     <run>
                                         echo '#!/bin/bash' >> run.sh ; \
@@ -223,7 +154,7 @@
                                         echo ' -Xbootclasspath/p:${LOGMANAGER_JAR}' >> run.sh ; \
                                         echo ' -Djboss.modules.system.pkgs=org.jboss.logmanager,io.promagent.agent' >> run.sh ; \
                                         echo ' -Djava.util.logging.manager=org.jboss.logmanager.LogManager' >> run.sh ; \
-                                        echo ' -javaagent:../promagent.jar=port=9300' >> run.sh ; \
+                                        echo ' -javaagent:../${project.artifactId}-${project.version}-agent.jar=port=9300' >> run.sh ; \
                                         echo '"' >> run.sh ; \
                                         echo >> run.sh ; \
                                         echo './bin/standalone.sh -b=0.0.0.0' >> run.sh ; \
@@ -236,7 +167,7 @@
                                     <inline>
                                         <files>
                                             <file>
-                                                <source>../promagent-dist/target/promagent.jar</source>
+                                                <source>target/${project.artifactId}-${project.version}-agent.jar</source>
                                                 <outputDirectory>/</outputDirectory>
                                             </file>
                                         </files>
@@ -264,9 +195,9 @@
 
                         <!-- promagent/spring: image with a Spring Boot demo application -->
                         <image>
-                            <name>${project.parent.artifactId}/spring</name>
+                            <name>${project.artifactId}/spring</name>
                             <build>
-                                <from>${project.parent.artifactId}/oracle-jdk-8</from>
+                                <from>${project.artifactId}/oracle-jdk-8</from>
                                 <workdir>/home/promagent</workdir>
                                 <runCmds>
                                     <run>git clone https://github.com/spring-guides/gs-accessing-data-rest.git</run>
@@ -279,14 +210,14 @@
 
                         <!-- promagent/spring-promagent: promagent added, used for the SpringIT integration test -->
                         <image>
-                            <name>${project.parent.artifactId}/spring-promagent</name>
+                            <name>${project.artifactId}/spring-promagent</name>
                             <build>
-                                <from>${project.parent.artifactId}/spring</from>
+                                <from>${project.artifactId}/spring</from>
                                 <runCmds>
                                     <run>
                                         echo '#!/bin/bash' >> run.sh ; \
                                         echo >> run.sh ; \
-                                        echo 'java -javaagent:promagent.jar=port=9300 -jar gs-accessing-data-rest-*.jar' >> run.sh ; \
+                                        echo 'java -javaagent:${project.artifactId}-${project.version}-agent.jar=port=9300 -jar gs-accessing-data-rest-*.jar' >> run.sh ; \
                                         chmod 755 run.sh ;
                                     </run>
                                 </runCmds>
@@ -296,7 +227,7 @@
                                     <inline>
                                         <files>
                                             <file>
-                                                <source>../promagent-dist/target/promagent.jar</source>
+                                                <source>target/${project.artifactId}-${project.version}-agent.jar</source>
                                                 <outputDirectory>/</outputDirectory>
                                             </file>
                                         </files>
@@ -342,6 +273,111 @@
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
     </build>
+
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+    <!-- This module tests the agent jar with real application server environments using Docker containers     -->
+    <!-- The Docker containers are built/started/stopped using the fabric8/docker-maven-plugin                 -->
+    <!-- Use maven profiles to specify which tests are run:                                                    -->
+    <!--                                                                                                       -->
+    <!-- mvn clean verify:                                                                                     -->
+    <!--     By default, no integration tests are run.                                                         -->
+    <!-- mvn clean verify -Pwildfly:                                                                           -->
+    <!--     Test against Wildfly 10.1.0.                                                                      -->
+    <!-- mvn clean verify -Pspring:                                                                            -->
+    <!--     Test against a Spring Boot demo application.                                                      -->
+    <!--                                                                                                       -->
+    <!-- If you run a profile for the first time, it will take quite long because the Docker images need to    -->
+    <!-- be built. Once the images are done, running the profile will become considerably faster.              -->
+    <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+    <profiles>
+        <profile>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <id>none</id>
+            <properties>
+                <docker.filter>skip-docker-tests</docker.filter>
+            </properties>
+        </profile>
+        <profile>
+            <id>wildfly</id>
+            <properties>
+                <docker.filter>
+                    ${project.artifactId}/oracle-jdk-8,
+                    ${project.artifactId}/wildfly-kitchensink,
+                    ${project.artifactId}/wildfly-kitchensink-promagent
+                </docker.filter>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/WildflyIT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <!-- Map maven variables (set by the docker-maven-plugin) to system properties -->
+                                <!-- which in turn can be used in the test classes. -->
+                                <deployment.url>http://${docker.host.address}:${wildfly.port}/wildfly-kitchensink</deployment.url>
+                                <promagent.url>http://${docker.host.address}:${promagent.port}</promagent.url>
+                            </systemPropertyVariables>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-tests</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>spring</id>
+            <properties>
+                <docker.filter>
+                    ${project.artifactId}/oracle-jdk-8,
+                    ${project.artifactId}/spring,
+                    ${project.artifactId}/spring-promagent
+                </docker.filter>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <includes>
+                                <include>**/SpringIT.java</include>
+                            </includes>
+                            <systemPropertyVariables>
+                                <!-- Map maven variables (set by the docker-maven-plugin) to system properties -->
+                                <!-- which in turn can be used in the test classes. -->
+                                <deployment.url>http://${docker.host.address}:${spring.port}</deployment.url>
+                                <promagent.url>http://${docker.host.address}:${promagent.port}</promagent.url>
+                            </systemPropertyVariables>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-tests</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
