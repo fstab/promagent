@@ -18,10 +18,11 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
-import org.apache.maven.plugins.annotations.*;
+import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
-
-import java.util.List;
 
 import static io.promagent.plugin.AgentJar.Directory.PER_DEPLOYMENT_JARS;
 import static io.promagent.plugin.AgentJar.Directory.SHARED_JARS;
@@ -29,32 +30,24 @@ import static io.promagent.plugin.AgentJar.Directory.SHARED_JARS;
 @Mojo(name = "build", aggregator = true, defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.RUNTIME)
 public class PromagentMojo extends AbstractMojo {
 
-    @Parameter( defaultValue = "${project.artifactId}" )
-    private String promagentArtifactId;
-
-    @Parameter( defaultValue = "agent" )
-    private String promagentClassifierName;
-
     @Component
     private MavenProject project;
 
     @Component
     private PluginDescriptor pluginDescriptor;
 
-    @Parameter(property = "project.build.directory", readonly = true)
-    private String outputDirectory;
-
     @Override
     public void execute() throws MojoExecutionException {
 
+        JarFileNames jarFileNames = JarFileNames.renameOrigJarFile(project);
         AgentDependencies agentDependencies = AgentDependencies.init(pluginDescriptor);
 
-        try (AgentJar agentJar = AgentJar.create(outputDirectory, makeAgentJarName())) {
+        try (AgentJar agentJar = AgentJar.create(jarFileNames.getFinalName().toFile())) {
             // Add extracted agent classes
             agentJar.extractJar(agentDependencies.getAgentArtifact().getFile(), new ManifestTransformer(pluginDescriptor));
             // Add project jar
             agentDependencies.assertNoConflict(project.getArtifact());
-            agentJar.addFile(project.getArtifact().getFile(), PER_DEPLOYMENT_JARS);
+            agentJar.addFile(jarFileNames.getNameAfterMove().toFile(), jarFileNames.getDefaultFinalName().getFileName().toString(), PER_DEPLOYMENT_JARS);
             // Add project dependencies
             for (Artifact artifact : project.getArtifacts()) {
                 agentDependencies.assertNoConflict(artifact);
@@ -65,10 +58,5 @@ public class PromagentMojo extends AbstractMojo {
                 agentJar.addFile(artifact.getFile(), SHARED_JARS);
             }
         }
-    }
-
-    private String makeAgentJarName() {
-        Artifact artifact = project.getArtifact();
-        return promagentArtifactId + "-" + artifact.getVersion() + "-" + promagentClassifierName + "." + artifact.getArtifactHandler().getExtension();
     }
 }

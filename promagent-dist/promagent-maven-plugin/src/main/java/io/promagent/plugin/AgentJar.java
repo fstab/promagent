@@ -51,29 +51,32 @@ class AgentJar implements AutoCloseable {
         this.jarOutputStream = jarOutputStream;
     }
 
-    static AgentJar create(String targetDirectory, String jarName) throws MojoExecutionException {
-        File agentJarFile = new File(targetDirectory, jarName);
+    static AgentJar create(File jarFile) throws MojoExecutionException {
         try {
-            JarOutputStream jarOutputStream = new JarOutputStream(new BufferedOutputStream(new FileOutputStream(agentJarFile)));
-            return new AgentJar(jarName, jarOutputStream);
+            JarOutputStream jarOutputStream = new JarOutputStream(new BufferedOutputStream(new FileOutputStream(jarFile)));
+            return new AgentJar(jarFile.getName(), jarOutputStream);
         } catch (IOException e) {
-            throw new MojoExecutionException("Error creating " + jarName + ": " + e.getMessage(), e);
+            throw new MojoExecutionException("Error creating " + jarFile.getName() + ": " + e.getMessage(), e);
         }
     }
 
-    void addFile(File srcFile, Directory targetDir) throws MojoExecutionException {
-        String destPath = targetDir.getName() + srcFile.getName();
+    void addFile(File srcFile, String targetFileName, Directory targetDir) throws MojoExecutionException {
+        String destPath = targetDir.getName() + targetFileName;
         if (content.contains(destPath)) {
             return;
         }
         makeDirsRecursively(destPath);
         content.add(destPath);
         try (InputStream in = new FileInputStream(srcFile)) {
-            jarOutputStream.putNextEntry(new JarEntry(targetDir.getName() + srcFile.getName()));
+            jarOutputStream.putNextEntry(new JarEntry(destPath));
             IOUtil.copy(in, jarOutputStream);
         } catch (IOException e) {
             throw new MojoExecutionException("Error adding " + srcFile.getName() + " to target JAR: " + e.getMessage(), e);
         }
+    }
+
+    void addFile(File srcFile, Directory targetDir) throws MojoExecutionException {
+        addFile(srcFile, srcFile.getName(), targetDir);
     }
 
     void extractJar(File jar, ManifestTransformer manifestTransformer) throws MojoExecutionException {

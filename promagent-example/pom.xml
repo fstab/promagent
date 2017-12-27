@@ -52,6 +52,7 @@
     </dependencies>
 
     <build>
+        <finalName>promagent</finalName>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -154,7 +155,7 @@
                                         echo ' -Xbootclasspath/p:${LOGMANAGER_JAR}' >> run.sh ; \
                                         echo ' -Djboss.modules.system.pkgs=org.jboss.logmanager,io.promagent.agent' >> run.sh ; \
                                         echo ' -Djava.util.logging.manager=org.jboss.logmanager.LogManager' >> run.sh ; \
-                                        echo ' -javaagent:../${project.artifactId}-${project.version}-agent.jar=port=9300' >> run.sh ; \
+                                        echo ' -javaagent:../promagent.jar=port=9300' >> run.sh ; \
                                         echo '"' >> run.sh ; \
                                         echo >> run.sh ; \
                                         echo './bin/standalone.sh -b=0.0.0.0' >> run.sh ; \
@@ -167,7 +168,7 @@
                                     <inline>
                                         <files>
                                             <file>
-                                                <source>target/${project.artifactId}-${project.version}-agent.jar</source>
+                                                <source>target/promagent.jar</source>
                                                 <outputDirectory>/</outputDirectory>
                                             </file>
                                         </files>
@@ -217,7 +218,7 @@
                                     <run>
                                         echo '#!/bin/bash' >> run.sh ; \
                                         echo >> run.sh ; \
-                                        echo 'java -javaagent:${project.artifactId}-${project.version}-agent.jar=port=9300 -jar gs-accessing-data-rest-*.jar' >> run.sh ; \
+                                        echo 'java -javaagent:promagent.jar=port=9300 -jar gs-accessing-data-rest-*.jar' >> run.sh ; \
                                         chmod 755 run.sh ;
                                     </run>
                                 </runCmds>
@@ -227,7 +228,7 @@
                                     <inline>
                                         <files>
                                             <file>
-                                                <source>target/${project.artifactId}-${project.version}-agent.jar</source>
+                                                <source>target/promagent.jar</source>
                                                 <outputDirectory>/</outputDirectory>
                                             </file>
                                         </files>
