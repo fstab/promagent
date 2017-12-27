@@ -32,20 +32,18 @@ import java.util.concurrent.TimeUnit;
 
 @Hook(instruments = {
         "javax.servlet.Servlet",
-        "javax.servlet.Filter"
-})
+        "javax.servlet.Filter"}
+//        skipNestedCalls = true
+)
 public class ServletHook {
-
-    private final HookContext context;
-
-    private final Counter httpRequestsTotal;
-    private final Summary httpRequestsDuration;
 
     static final Key<String> SERVLET_HOOK_METHOD = new Key<>("servlet.hook.method");
     static final Key<String> SERVLET_HOOK_PATH = new Key<>("servlet.hook.path");
-
+    private final HookContext context;
+    private final Counter httpRequestsTotal;
+    private final Summary httpRequestsDuration;
     private long startTime = 0;
-    private boolean relevant = false;
+    private int stackDepth = 0;
 
     public ServletHook(HookContext context) {
 
@@ -103,35 +101,37 @@ public class ServletHook {
 
     @Before(method = {"service", "doFilter"})
     public void before(ServletRequest request, ServletResponse response) {
+        stackDepth++;
+        System.err.println("servlet before call number " + stackDepth + " on object " + this);
+        if (stackDepth > 1) {
+            return; // recursive call
+        }
         if (HttpServletRequest.class.isAssignableFrom(request.getClass()) && HttpServletResponse.class.isAssignableFrom(response.getClass())) {
             HttpServletRequest req = (HttpServletRequest) request;
-            if (context.getThreadLocal().get(SERVLET_HOOK_METHOD).isPresent()) {
-                // This is a nested call, i.e. this Servlet or Filter is called from within another Servlet or Filter.
-                // We only instrument the outer-most call and ignore nested calls.
-                // Returning here will leave the variable relevant=false, so the @After method does not do anything.
-                return;
-            }
             context.getThreadLocal().put(SERVLET_HOOK_METHOD, req.getMethod());
             context.getThreadLocal().put(SERVLET_HOOK_PATH, stripPathParameters(req.getRequestURI()));
             startTime = System.nanoTime();
-            relevant = true;
         }
     }
 
+    // Return Werte und Exceptions als Parameter
     @After(method = {"service", "doFilter"})
-    public void after(ServletRequest request, ServletResponse response) throws Exception {
+    public void after(ServletRequest request, ServletResponse response/*, @Returned int i, @Thrown Throwable t*/) throws Exception {
+        System.err.println("servlet after call number " + stackDepth + " on object " + this);
+        stackDepth--;
+        if (stackDepth > 0) {
+            return; // recursive call
+        }
         if (HttpServletRequest.class.isAssignableFrom(request.getClass()) && HttpServletResponse.class.isAssignableFrom(response.getClass())) {
             HttpServletResponse resp = (HttpServletResponse) response;
-            if (relevant) {
-                try {
-                    double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                    String method = context.getThreadLocal().get(SERVLET_HOOK_METHOD).get();
-                    String path = context.getThreadLocal().get(SERVLET_HOOK_PATH).get();
-                    httpRequestsTotal.labels(method, path, Integer.toString(resp.getStatus())).inc();
-                    httpRequestsDuration.labels(method, path, Integer.toString(resp.getStatus())).observe(duration);
-                } finally {
-                    context.getThreadLocal().clear(SERVLET_HOOK_METHOD, SERVLET_HOOK_PATH);
-                }
+            try {
+                double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
+                String method = context.getThreadLocal().get(SERVLET_HOOK_METHOD).get();
+                String path = context.getThreadLocal().get(SERVLET_HOOK_PATH).get();
+                httpRequestsTotal.labels(method, path, Integer.toString(resp.getStatus())).inc();
+                httpRequestsDuration.labels(method, path, Integer.toString(resp.getStatus())).observe(duration);
+            } finally {
+                context.getThreadLocal().clear(SERVLET_HOOK_METHOD, SERVLET_HOOK_PATH);
             }
         }
     }

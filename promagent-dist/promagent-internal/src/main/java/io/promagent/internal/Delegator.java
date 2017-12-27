@@ -32,10 +32,11 @@ import java.util.stream.Collectors;
  */
 public class Delegator {
 
+    private static final ThreadLocal<Map<Class<?>, Object>> threadLocal = ThreadLocal.withInitial(HashMap::new);
     private static SortedSet<HookMetadata> hookMetadata;
     private static HookContext hookContext;
 
-    static void init(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry) throws ClassNotFoundException {
+    static void init(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry) {
         Delegator.hookMetadata = hookMetadata;
         MetricsStore metricsStore = new MetricsStore(registry);
         TypeSafeThreadLocal threadLocal = new TypeSafeThreadLocal(ThreadLocal.withInitial(HashMap::new));
@@ -45,27 +46,31 @@ public class Delegator {
     /**
      * Should be called from the Advice's @OnMethodEnter method. Returns the list of Hooks to be passed on to after()
      */
-    public static List<Object> before(Object that, Method method, Object[] args) {
-        List<Object> hooks = Delegator.createHookInstances(that, method);
-        for (Object hook : hooks) {
-            Delegator.invokeBefore(hook, method, args);
+    public static List<HookInstance> before(Object that, Method method, Object[] args) {
+        List<HookInstance> hookInstances = Delegator.loadFromThreadLocalOrCreate(that, method);
+        for (HookInstance hookInstance : hookInstances) {
+            Delegator.invokeBefore(hookInstance.getInstance(), method, args);
         }
-        return hooks;
+        return hookInstances;
     }
 
     /**
      * Should be called from the Advice's @OnMethodExit method. First parameter is the list of hooks returned by before()
      */
-    public static void after(List<Object> hooks, Method method, Object[] args) {
-        if (hooks != null) {
-            for (Object hook : hooks) {
-                Delegator.invokeAfter(hook, method, args);
+    public static void after(List<HookInstance> hookInstances, Method method, Object[] args) {
+        if (hookInstances != null) {
+            for (HookInstance hookInstance : hookInstances) {
+                Delegator.invokeAfter(hookInstance.getInstance(), method, args);
+                if (!hookInstance.isRecursiveCall()) {
+                    threadLocal.get().remove(hookInstance.getInstance().getClass());
+                }
             }
         }
     }
 
     /**
-     * Create a new instance of each hook class satisfying the following criteria:
+     * Take an existing hook instance from a thread local or create a new one.
+     * Hook classes must satisfy the following criteria:
      * <ul>
      *     <li>that.getClass() is assignable to the value of the Hook's instruments annotation
      *     <li>The name of the instrumented method and the number of arguments match.
@@ -75,12 +80,12 @@ public class Delegator {
      * be ignored when calling {@link #invokeBefore(Object, Method, Object...)}
      * and {@link #invokeAfter(Object, Method, Object...)}, so it's ok to include them here.
      */
-    private static List<Object> createHookInstances(Object that, Method method) {
+    private static List<HookInstance> loadFromThreadLocalOrCreate(Object that, Method method) {
         return hookMetadata.stream()
                 .filter(hook -> classOrInterfaceMatches(that.getClass(), hook))
                 .filter(hook -> methodNameAndNumArgsMatch(method, hook))
                 .map(hook -> createHookClass(hook))
-                .map(hookClass -> createHookInstance(hookClass))
+                .map(hookClass -> loadFromTheadLocalOrCreate(hookClass))
                 .collect(Collectors.toList());
     }
 
@@ -145,14 +150,21 @@ public class Delegator {
         }
     }
 
-    private static Object createHookInstance(Class<?> hookClass) {
-        String errMsg = "Failed to create new instance of hook " + hookClass.getSimpleName() + ": ";
-        try {
-            return hookClass.getConstructor(HookContext.class).newInstance(hookContext);
-        } catch (NoSuchMethodException e) {
-            throw new HookException(errMsg + "Hook classes must have a public constructor with a single parameter of type " + HookContext.class.getSimpleName(), e);
-        } catch (Exception e) {
-            throw new HookException(errMsg + e.getMessage(), e);
+    private static HookInstance loadFromTheadLocalOrCreate(Class<?> hookClass) {
+        Object existingHookInstance = threadLocal.get().get(hookClass);
+        if (existingHookInstance != null) {
+            return new HookInstance(existingHookInstance, true);
+        } else {
+            String errMsg = "Failed to create new instance of hook " + hookClass.getSimpleName() + ": ";
+            try {
+                Object newHookInstance = hookClass.getConstructor(HookContext.class).newInstance(hookContext);
+                threadLocal.get().put(hookClass, newHookInstance);
+                return new HookInstance(newHookInstance, false);
+            } catch (NoSuchMethodException e) {
+                throw new HookException(errMsg + "Hook classes must have a public constructor with a single parameter of type " + HookContext.class.getSimpleName(), e);
+            } catch (Exception e) {
+                throw new HookException(errMsg + e.getMessage(), e);
+            }
         }
     }
 

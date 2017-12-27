@@ -28,4 +28,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Hook {
     String[] instruments();
+//    boolean skipNestedCalls() default true;
 }

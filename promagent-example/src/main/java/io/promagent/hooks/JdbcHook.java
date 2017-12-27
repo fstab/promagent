@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 public class JdbcHook {
 
     private final HookContext context;
+    private int stackDepth = 0;
 
     private final Counter sqlQueriesTotal;
     private final Summary sqlQueriesDuration;
@@ -42,7 +43,6 @@ public class JdbcHook {
     private static final Key<Set<String>> JDBC_HOOK_QUERY = new Key<>("jdbc.hook.query");
 
     private long startTime = 0;
-    private boolean relevant = false;
 
     public JdbcHook(HookContext context) {
 
@@ -85,6 +85,11 @@ public class JdbcHook {
 
     @Before(method = {"execute", "executeQuery", "executeUpdate", "executeLargeUpdate", "prepareStatement", "prepareCall"})
     public void before(String sql) {
+        stackDepth++;
+        System.err.println("jdbc before call number " + stackDepth + " on object " + this);
+        if (stackDepth > 1) {
+            return;
+        }
         if (getRunningQueries().contains(sql)) {
             // This is a nested call, i.e. this Statement or Connection is called from within another Statement or Connection.
             // We only instrument the outer-most call and ignore nested calls.
@@ -92,7 +97,6 @@ public class JdbcHook {
             return;
         }
         getRunningQueries().add(sql);
-        relevant = true;
         startTime = System.nanoTime();
     }
 
@@ -125,19 +129,22 @@ public class JdbcHook {
 
     @After(method = {"execute", "executeQuery", "executeUpdate", "executeLargeUpdate", "prepareStatement", "prepareCall"})
     public void after(String sql) throws Exception {
-        if (relevant) {
-            try {
-                double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                String method = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_METHOD).orElse("no http context");
-                String path = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_PATH).orElse("no http context");
-                String query = stripValues(sql);
-                sqlQueriesTotal.labels(method, path, query).inc();
-                sqlQueriesDuration.labels(method, path, query).observe(duration);
-            } finally {
-                getRunningQueries().remove(sql);
-                if (context.getThreadLocal().get(JDBC_HOOK_QUERY).get().isEmpty()) {
-                    context.getThreadLocal().clear(JDBC_HOOK_QUERY);
-                }
+        System.err.println("jdbc after call number " + stackDepth + " on object " + this);
+        stackDepth--;
+        if (stackDepth > 0) {
+            return; // recursive call
+        }
+        try {
+            double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
+            String method = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_METHOD).orElse("no http context");
+            String path = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_PATH).orElse("no http context");
+            String query = stripValues(sql);
+            sqlQueriesTotal.labels(method, path, query).inc();
+            sqlQueriesDuration.labels(method, path, query).observe(duration);
+        } finally {
+            getRunningQueries().remove(sql);
+            if (context.getThreadLocal().get(JDBC_HOOK_QUERY).get().isEmpty()) {
+                context.getThreadLocal().clear(JDBC_HOOK_QUERY);
             }
         }
     }
