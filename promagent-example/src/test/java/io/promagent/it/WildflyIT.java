@@ -41,6 +41,7 @@ public class WildflyIT {
         Assertions.assertEquals(restResponse.code(), 200);
         Assertions.assertTrue(restResponse.body().string().contains("John Smith"));
 
+        Thread.sleep(100); // metric is incremented after servlet has written the response, wait a little to get the updated metric
         assertMetrics(client, "1.0");
 
         // Execute REST call again
@@ -48,6 +49,7 @@ public class WildflyIT {
         Assertions.assertEquals(restResponse.code(), 200);
         Assertions.assertTrue(restResponse.body().string().contains("John Smith"));
 
+        Thread.sleep(100); // metric is incremented after servlet has written the response, wait a little to get the updated metric
         assertMetrics(client, "2.0");
     }
 
