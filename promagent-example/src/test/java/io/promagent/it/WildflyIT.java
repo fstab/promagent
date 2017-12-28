@@ -38,12 +38,14 @@ public class WildflyIT {
 
         // Execute REST call
         Response restResponse = client.newCall(restRequest).execute();
+        Assertions.assertEquals(restResponse.code(), 200);
         Assertions.assertTrue(restResponse.body().string().contains("John Smith"));
 
         assertMetrics(client, "1.0");
 
         // Execute REST call again
         restResponse = client.newCall(restRequest).execute();
+        Assertions.assertEquals(restResponse.code(), 200);
         Assertions.assertTrue(restResponse.body().string().contains("John Smith"));
 
         assertMetrics(client, "2.0");
