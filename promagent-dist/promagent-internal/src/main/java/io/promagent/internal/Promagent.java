@@ -45,18 +45,19 @@ public class Promagent {
             AgentBuilder agentBuilder = new AgentBuilder.Default()
                     .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
                     .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
-            List<Path> hookJars = ClassLoaderCache.getInstance().getPerDeploymentJars();
+            ClassLoaderCache classLoaderCache = ClassLoaderCache.getInstance();
+            List<Path> hookJars = classLoaderCache.getPerDeploymentJars();
             SortedSet<HookMetadata> hookMetadata = new HookMetadataParser(hookJars).parse();
-            Delegator.init(hookMetadata, registry);
-            agentBuilder = applyHooks(agentBuilder, hookMetadata);
+            Delegator.init(hookMetadata, registry, classLoaderCache);
+            agentBuilder = applyHooks(agentBuilder, hookMetadata, classLoaderCache);
             agentBuilder.installOn(inst);
             System.out.println("Promagent instrumenting the following classes or interfaces:");
             for (HookMetadata m : hookMetadata) {
                 System.out.println(m);
             }
 
-            // TODO
-            io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
+            // TODO -- this is an experiment supporting collectors directly (in addition to hooks)
+            io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) classLoaderCache.currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
             registry.registerNoJmx(jmxCollector);
 
         } catch (Throwable t) {
@@ -67,7 +68,7 @@ public class Promagent {
     /**
      * Add {@link ElementMatcher} for the hooks.
      */
-    private static AgentBuilder applyHooks(AgentBuilder agentBuilder, Collection<HookMetadata> hookMetadata) {
+    private static AgentBuilder applyHooks(AgentBuilder agentBuilder, Collection<HookMetadata> hookMetadata, ClassLoaderCache classLoaderCache) {
         for (HookMetadata metadata : hookMetadata) {
             ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
             for (HookMetadata.MethodSignature methodSignature : metadata.getMethods()) {
@@ -88,7 +89,7 @@ public class Promagent {
                 agentBuilder = agentBuilder
                         .type(ElementMatchers.hasSuperType(named(instruments)))
                         .transform(new AgentBuilder.Transformer.ForAdvice()
-                                .include(ClassLoaderCache.getInstance().currentClassLoader())
+                                .include(classLoaderCache.currentClassLoader())
                                 .advice(methodMatcher, PromagentAdvice.class.getName())
                         );
             }

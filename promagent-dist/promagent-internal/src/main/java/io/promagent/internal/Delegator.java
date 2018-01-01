@@ -30,27 +30,42 @@ import java.util.stream.Stream;
 
 /**
  * Delegator is called from the Byte Buddy Advice, and calls the Hook's @Before and @After methods.
+ * <p>
+ * TODO: This is called often, should be performance optimized, e.g. caching hook method handles, etc.
  */
 public class Delegator {
 
-    private static final ThreadLocal<Map<Class<?>, Object>> threadLocal = ThreadLocal.withInitial(HashMap::new);
-    private static SortedSet<HookMetadata> hookMetadata;
-    private static HookContext hookContext;
+    private static Delegator instance; // not thread-safe, but it is set only once in the agent's premain method.
 
-    static void init(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry) {
-        Delegator.hookMetadata = hookMetadata;
+    private final ThreadLocal<Map<Class<?>, Object>> threadLocal;
+    private final ClassLoaderCache classLoaderCache;
+    private final SortedSet<HookMetadata> hookMetadata;
+    private final HookContext hookContext;
+
+    private Delegator(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry, ClassLoaderCache classLoaderCache) {
+        this.classLoaderCache = classLoaderCache;
+        this.hookMetadata = hookMetadata;
+        this.threadLocal = ThreadLocal.withInitial(HashMap::new);
         MetricsStore metricsStore = new MetricsStore(registry);
         TypeSafeThreadLocal threadLocal = new TypeSafeThreadLocal(ThreadLocal.withInitial(HashMap::new));
-        hookContext = new HookContext(metricsStore, threadLocal);
+        this.hookContext = new HookContext(metricsStore, threadLocal);
+    }
+
+    static void init(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry, ClassLoaderCache classLoaderCache) {
+        instance = new Delegator(hookMetadata, registry, classLoaderCache);
     }
 
     /**
      * Should be called from the Advice's @OnMethodEnter method. Returns the list of Hooks to be passed on to after()
      */
     public static List<HookInstance> before(Object that, Method interceptedMethod, Object[] args) {
-        List<HookInstance> hookInstances = Delegator.loadFromThreadLocalOrCreate(that, interceptedMethod);
+        return instance.doBefore(that, interceptedMethod, args);
+    }
+
+    private List<HookInstance> doBefore(Object that, Method interceptedMethod, Object[] args) {
+        List<HookInstance> hookInstances = loadFromThreadLocalOrCreate(that, interceptedMethod);
         for (HookInstance hookInstance : hookInstances) {
-            Delegator.invokeBefore(hookInstance.getInstance(), interceptedMethod, args);
+            invokeBefore(hookInstance.getInstance(), interceptedMethod, args);
         }
         return hookInstances;
     }
@@ -59,9 +74,13 @@ public class Delegator {
      * Should be called from the Advice's @OnMethodExit method. First parameter is the list of hooks returned by before()
      */
     public static void after(List<HookInstance> hookInstances, Method interceptedMethod, Object[] args) {
+        instance.doAfter(hookInstances, interceptedMethod, args);
+    }
+
+    private void doAfter(List<HookInstance> hookInstances, Method interceptedMethod, Object[] args) {
         if (hookInstances != null) {
             for (HookInstance hookInstance : hookInstances) {
-                Delegator.invokeAfter(hookInstance.getInstance(), interceptedMethod, args);
+                invokeAfter(hookInstance.getInstance(), interceptedMethod, args);
                 if (!hookInstance.isRecursiveCall()) {
                     threadLocal.get().remove(hookInstance.getInstance().getClass());
                 }
@@ -81,7 +100,7 @@ public class Delegator {
      * be ignored when calling {@link #invokeBefore(Object, Method, Object...)}
      * and {@link #invokeAfter(Object, Method, Object...)}, so it's ok to include them here.
      */
-    private static List<HookInstance> loadFromThreadLocalOrCreate(Object that, Method interceptedMethod) {
+    private List<HookInstance> loadFromThreadLocalOrCreate(Object that, Method interceptedMethod) {
         return hookMetadata.stream()
                 .filter(hook -> classOrInterfaceMatches(that.getClass(), hook))
                 .filter(hook -> methodNameAndNumArgsMatch(interceptedMethod, hook))
@@ -117,50 +136,39 @@ public class Delegator {
     }
 
     private static boolean methodNameAndNumArgsMatch(Method interceptedMethod, HookMetadata hook) {
-        return hook.getMethods().stream().anyMatch(m -> methodNameAndNumArgsMatch(interceptedMethod, m));
+        return hook.getMethods().stream()
+                .anyMatch(instrumentedMethod -> methodNameAndNumArgsMatch(interceptedMethod, instrumentedMethod));
     }
 
-    private static boolean methodNameAndNumArgsMatch(Method interceptedMethod, HookMetadata.MethodSignature hookMethod) {
-        if (!interceptedMethod.getName().equals(hookMethod.getMethodName())) {
+    private static boolean methodNameAndNumArgsMatch(Method interceptedMethod, HookMetadata.MethodSignature instrumentedMethod) {
+        if (!interceptedMethod.getName().equals(instrumentedMethod.getMethodName())) {
             return false;
         }
-        if (interceptedMethod.getParameterCount() != hookMethod.getParameterTypes().size()) {
+        if (interceptedMethod.getParameterCount() != instrumentedMethod.getParameterTypes().size()) {
             return false;
         }
         return true;
     }
 
-    private static Class<?> createHookClass(HookMetadata hook) {
+    private Class<?> createHookClass(HookMetadata hook) {
         try {
-            return ClassLoaderCache.getInstance().currentClassLoader().loadClass(hook.getHookClassName());
+            return classLoaderCache.currentClassLoader().loadClass(hook.getHookClassName());
         } catch (ClassNotFoundException e) {
             throw new HookException("Failed to load Hook class " + hook.getHookClassName() + ": " + e.getMessage(), e);
         }
     }
 
     private static boolean argumentTypesMatch(Class<?> hookClass, Method interceptedMethod) {
-        Method before = findHookMethod(Before.class, hookClass, interceptedMethod);
-        Method after = findHookMethod(After.class, hookClass, interceptedMethod);
-        return before != null || after != null;
+        List<Method> before = findHookMethods(Before.class, hookClass, interceptedMethod);
+        List<Method> after = findHookMethods(After.class, hookClass, interceptedMethod);
+        return ! (before.isEmpty() && after.isEmpty());
     }
 
-    private static Method findHookMethod(Class<? extends Annotation> annotation, Class<?> hookClass, Method interceptedMethod) throws HookException {
-        for (Method hookMethod : allAnnotatedMethods(annotation, hookClass, interceptedMethod.getName())) {
-            if (parameterTypesMatch(hookMethod, interceptedMethod)) {
-                return hookMethod;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Example: Find all methods annotated with @Before(method="service").
-     * In the example, annotation is Before.class, and methodName is "service".
-     */
-    private static List<Method> allAnnotatedMethods(Class<? extends Annotation> annotation, Class<?> hookClass, String methodName) throws HookException {
-        return Stream.of(hookClass.getMethods())
+    private static List<Method> findHookMethods(Class<? extends Annotation> annotation, Class<?> hookClass, Method interceptedMethod) throws HookException {
+        return Stream.of(hookClass.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(annotation))
-                .filter(method -> getMethodNames(method.getAnnotation(annotation)).contains(methodName))
+                .filter(method -> getMethodNames(method.getAnnotation(annotation)).contains(interceptedMethod.getName()))
+                .filter(method -> parameterTypesMatch(method, interceptedMethod))
                 .collect(Collectors.toList());
     }
 
@@ -189,7 +197,7 @@ public class Delegator {
         return true;
     }
 
-    private static HookInstance loadFromTheadLocalOrCreate(Class<?> hookClass) {
+    private HookInstance loadFromTheadLocalOrCreate(Class<?> hookClass) {
         Object existingHookInstance = threadLocal.get().get(hookClass);
         if (existingHookInstance != null) {
             return new HookInstance(existingHookInstance, true);
@@ -222,13 +230,18 @@ public class Delegator {
     }
 
     private static void invoke(Class<? extends Annotation> annotation, Object hookInstance, Method interceptedMethod, Object... args) throws HookException {
-        Method method = findHookMethod(annotation, hookInstance.getClass(), interceptedMethod);
-        try {
-            if (method != null) {
+        if (args.length != interceptedMethod.getParameterCount()) {
+            throw new IllegalArgumentException("Number of provided arguments is " + args.length + ", but interceptedMethod expects " + interceptedMethod.getParameterCount() + " argument(s).");
+        }
+        for (Method method : findHookMethods(annotation, hookInstance.getClass(), interceptedMethod)) {
+            try {
+                if (!method.isAccessible()) {
+                    method.setAccessible(true);
+                }
                 method.invoke(hookInstance, args);
+            } catch (Exception e) {
+                throw new HookException("Failed to call " + method.getName() + "() on " + hookInstance.getClass().getSimpleName() + ": " + e.getMessage(), e);
             }
-        } catch (Exception e) {
-            throw new HookException("Failed to call " + method.getName() + "() on " + hookInstance.getClass().getSimpleName() + ": " + e.getMessage(), e);
         }
     }
 }
