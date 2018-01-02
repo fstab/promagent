@@ -3,7 +3,7 @@ package io.promagent.internal.examples.hooks;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
-import io.promagent.hookcontext.HookContext;
+import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.MethodCallCounter;
 import io.promagent.internal.examples.classes.InstrumentedClass.Fruit;
 import io.promagent.internal.examples.classes.InstrumentedClass.Orange;
@@ -13,7 +13,7 @@ import java.util.List;
 @Hook(instruments = "io.promagent.internal.examples.classes.InstrumentedClass")
 public class TestHook {
 
-    public TestHook(HookContext ctxt) {}
+    public TestHook(MetricsStore m) {}
 
     @Before(method = "noParam")
     public void before() {

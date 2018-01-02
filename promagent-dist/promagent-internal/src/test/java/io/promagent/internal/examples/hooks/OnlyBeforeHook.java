@@ -2,7 +2,7 @@ package io.promagent.internal.examples.hooks;
 
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
-import io.promagent.hookcontext.HookContext;
+import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.MethodCallCounter;
 import io.promagent.internal.examples.classes.InstrumentedClass;
 
@@ -12,7 +12,7 @@ import io.promagent.internal.examples.classes.InstrumentedClass;
 @Hook(instruments = "io.promagent.internal.examples.classes.InstrumentedClass")
 public class OnlyBeforeHook {
 
-    public OnlyBeforeHook(HookContext ctxt) {}
+    public OnlyBeforeHook(MetricsStore m) {}
 
     @Before(method = "objects")
     public void before(Object o, InstrumentedClass.Fruit f, InstrumentedClass.Orange x) {

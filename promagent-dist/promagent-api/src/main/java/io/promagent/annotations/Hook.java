@@ -28,5 +28,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Hook {
     String[] instruments();
-//    boolean skipNestedCalls() default true;
+//    boolean skipNestedCalls() default true; // TODO: Support this so the hooks don't need to track the stackDepth manually.
 }

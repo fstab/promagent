@@ -17,16 +17,15 @@ package io.promagent.hooks;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
-import io.promagent.hookcontext.HookContext;
-import io.promagent.hookcontext.Key;
 import io.promagent.hookcontext.MetricDef;
 import io.promagent.hookcontext.MetricsStore;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Summary;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import static io.promagent.hooks.HttpContext.HTTP_METHOD;
+import static io.promagent.hooks.HttpContext.HTTP_PATH;
 
 @Hook(instruments = {
         "java.sql.Statement",
@@ -34,21 +33,13 @@ import java.util.concurrent.TimeUnit;
 })
 public class JdbcHook {
 
-    private final HookContext context;
-    private int stackDepth = 0;
-
     private final Counter sqlQueriesTotal;
     private final Summary sqlQueriesDuration;
-
-    private static final Key<Set<String>> JDBC_HOOK_QUERY = new Key<>("jdbc.hook.query");
-
+    private String currentQuery;
     private long startTime = 0;
+    private int stackDepth = 0; // Will be > 0 if a jdbc method is called from another jdbc method, so we only count the outermost call.
 
-    public JdbcHook(HookContext context) {
-
-        this.context = context;
-
-        MetricsStore metricsStore = context.getMetricsStore();
+    public JdbcHook(MetricsStore metricsStore) {
 
         sqlQueriesTotal = metricsStore.createOrGet(new MetricDef<>(
                 "sql_queries_total",
@@ -86,18 +77,11 @@ public class JdbcHook {
     @Before(method = {"execute", "executeQuery", "executeUpdate", "executeLargeUpdate", "prepareStatement", "prepareCall"})
     public void before(String sql) {
         stackDepth++;
-        System.err.println("jdbc before call number " + stackDepth + " on object " + this);
         if (stackDepth > 1) {
             return;
         }
-        if (getRunningQueries().contains(sql)) {
-            // This is a nested call, i.e. this Statement or Connection is called from within another Statement or Connection.
-            // We only instrument the outer-most call and ignore nested calls.
-            // Returning here will leave the variable relevant=false, so the @After method does not do anything.
-            return;
-        }
-        getRunningQueries().add(sql);
         startTime = System.nanoTime();
+        currentQuery = stripValues(sql);
     }
 
     @Before(method = {"execute", "executeUpdate", "executeLargeUpdate", "prepareStatement"})
@@ -129,24 +113,20 @@ public class JdbcHook {
 
     @After(method = {"execute", "executeQuery", "executeUpdate", "executeLargeUpdate", "prepareStatement", "prepareCall"})
     public void after(String sql) throws Exception {
-        System.err.println("jdbc after call number " + stackDepth + " on object " + this);
+        if (!stripValues(sql).equals(currentQuery)) { // I don't think this can happen, but let's track it for a while to be sure.
+            System.err.println("Different queries in same JDBC call: '" + currentQuery + "', '" + stripValues(sql) + "'.");
+        }
+
         stackDepth--;
         if (stackDepth > 0) {
             return; // recursive call
         }
-        try {
-            double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-            String method = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_METHOD).orElse("no http context");
-            String path = context.getThreadLocal().get(ServletHook.SERVLET_HOOK_PATH).orElse("no http context");
-            String query = stripValues(sql);
-            sqlQueriesTotal.labels(method, path, query).inc();
-            sqlQueriesDuration.labels(method, path, query).observe(duration);
-        } finally {
-            getRunningQueries().remove(sql);
-            if (context.getThreadLocal().get(JDBC_HOOK_QUERY).get().isEmpty()) {
-                context.getThreadLocal().clear(JDBC_HOOK_QUERY);
-            }
-        }
+        double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
+        String method = HttpContext.get(HTTP_METHOD).orElse("no http context");
+        String path = HttpContext.get(HTTP_PATH).orElse("no http context");
+        String query = stripValues(sql);
+        sqlQueriesTotal.labels(method, path, query).inc();
+        sqlQueriesDuration.labels(method, path, query).observe(duration);
     }
 
     @After(method = {"execute", "executeUpdate", "executeLargeUpdate", "prepareStatement"})
@@ -172,14 +152,5 @@ public class JdbcHook {
     @After(method = {"prepareStatement", "prepareCall"})
     public void after(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws Exception {
         after(sql);
-    }
-
-    // ---
-
-    private Set<String> getRunningQueries() {
-        if (!context.getThreadLocal().get(JDBC_HOOK_QUERY).isPresent()) {
-            context.getThreadLocal().put(JDBC_HOOK_QUERY, new HashSet<>());
-        }
-        return context.getThreadLocal().get(JDBC_HOOK_QUERY).get();
     }
 }

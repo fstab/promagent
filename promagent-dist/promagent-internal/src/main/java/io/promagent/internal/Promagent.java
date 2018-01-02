@@ -15,10 +15,9 @@
 package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
+import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.jmx.Exporter;
 import io.promagent.internal.jmx.PromagentCollectorRegistry;
-import io.prometheus.client.Collector;
-import io.prometheus.client.CollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.matcher.ElementMatcher;
@@ -48,7 +47,8 @@ public class Promagent {
             ClassLoaderCache classLoaderCache = ClassLoaderCache.getInstance();
             List<Path> hookJars = classLoaderCache.getPerDeploymentJars();
             SortedSet<HookMetadata> hookMetadata = new HookMetadataParser(hookJars).parse();
-            Delegator.init(hookMetadata, registry, classLoaderCache);
+            MetricsStore metricsStore = new MetricsStore(registry);
+            Delegator.init(hookMetadata, metricsStore, classLoaderCache);
             agentBuilder = applyHooks(agentBuilder, hookMetadata, classLoaderCache);
             agentBuilder.installOn(inst);
             System.out.println("Promagent instrumenting the following classes or interfaces:");

@@ -17,10 +17,7 @@ package io.promagent.internal;
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
-import io.promagent.hookcontext.HookContext;
 import io.promagent.hookcontext.MetricsStore;
-import io.promagent.hookcontext.TypeSafeThreadLocal;
-import io.prometheus.client.CollectorRegistry;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -37,22 +34,20 @@ public class Delegator {
 
     private static Delegator instance; // not thread-safe, but it is set only once in the agent's premain method.
 
-    private final ThreadLocal<Map<Class<?>, Object>> threadLocal;
-    private final ClassLoaderCache classLoaderCache;
     private final SortedSet<HookMetadata> hookMetadata;
-    private final HookContext hookContext;
+    private final MetricsStore metricsStore;
+    private final ClassLoaderCache classLoaderCache;
+    private final ThreadLocal<Map<Class<?>, Object>> threadLocal;
 
-    private Delegator(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry, ClassLoaderCache classLoaderCache) {
-        this.classLoaderCache = classLoaderCache;
+    private Delegator(SortedSet<HookMetadata> hookMetadata, MetricsStore metricsStore, ClassLoaderCache classLoaderCache) {
         this.hookMetadata = hookMetadata;
+        this.metricsStore = metricsStore;
+        this.classLoaderCache = classLoaderCache;
         this.threadLocal = ThreadLocal.withInitial(HashMap::new);
-        MetricsStore metricsStore = new MetricsStore(registry);
-        TypeSafeThreadLocal threadLocal = new TypeSafeThreadLocal(ThreadLocal.withInitial(HashMap::new));
-        this.hookContext = new HookContext(metricsStore, threadLocal);
     }
 
-    static void init(SortedSet<HookMetadata> hookMetadata, CollectorRegistry registry, ClassLoaderCache classLoaderCache) {
-        instance = new Delegator(hookMetadata, registry, classLoaderCache);
+    static void init(SortedSet<HookMetadata> hookMetadata, MetricsStore metricsStore, ClassLoaderCache classLoaderCache) {
+        instance = new Delegator(hookMetadata, metricsStore, classLoaderCache);
     }
 
     /**
@@ -204,11 +199,11 @@ public class Delegator {
         } else {
             String errMsg = "Failed to create new instance of hook " + hookClass.getSimpleName() + ": ";
             try {
-                Object newHookInstance = hookClass.getConstructor(HookContext.class).newInstance(hookContext);
+                Object newHookInstance = hookClass.getConstructor(MetricsStore.class).newInstance(metricsStore);
                 threadLocal.get().put(hookClass, newHookInstance);
                 return new HookInstance(newHookInstance, false);
             } catch (NoSuchMethodException e) {
-                throw new HookException(errMsg + "Hook classes must have a public constructor with a single parameter of type " + HookContext.class.getSimpleName(), e);
+                throw new HookException(errMsg + "Hook classes must have a public constructor with a single parameter of type " + MetricsStore.class.getSimpleName(), e);
             } catch (Exception e) {
                 throw new HookException(errMsg + e.getMessage(), e);
             }

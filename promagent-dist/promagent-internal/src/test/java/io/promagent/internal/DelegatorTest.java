@@ -15,6 +15,7 @@
 package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
+import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.examples.classes.InstrumentedClass;
 import io.promagent.internal.examples.classes.InstrumentedClass.Fruit;
 import io.promagent.internal.examples.classes.InstrumentedClass.Orange;
@@ -22,7 +23,6 @@ import io.promagent.internal.examples.hooks.OnlyAfterHook;
 import io.promagent.internal.examples.hooks.OnlyBeforeHook;
 import io.promagent.internal.examples.hooks.TestHook;
 import io.promagent.internal.examples.hooks.TwoHooks;
-import io.prometheus.client.CollectorRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -63,7 +63,8 @@ class DelegatorTest {
                 OnlyAfterHook.class
         );
         ClassLoaderCache classLoaderCache = mockClassLoaderCache();
-        Delegator.init(hookMetadata, CollectorRegistry.defaultRegistry, classLoaderCache);
+        MetricsStore metricsStore = mockMetricsStore();
+        Delegator.init(hookMetadata, metricsStore, classLoaderCache);
         MethodCallCounter.reset();
     }
 
@@ -297,5 +298,9 @@ class DelegatorTest {
         ClassLoaderCache mockedClassLoaderCache = Mockito.mock(ClassLoaderCache.class);
         Mockito.when(mockedClassLoaderCache.currentClassLoader()).thenReturn(Thread.currentThread().getContextClassLoader());
         return mockedClassLoaderCache;
+    }
+
+    private MetricsStore mockMetricsStore() {
+        return Mockito.mock(MetricsStore.class);
     }
 }

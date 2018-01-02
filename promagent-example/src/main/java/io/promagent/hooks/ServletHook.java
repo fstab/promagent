@@ -17,8 +17,6 @@ package io.promagent.hooks;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
-import io.promagent.hookcontext.HookContext;
-import io.promagent.hookcontext.Key;
 import io.promagent.hookcontext.MetricDef;
 import io.promagent.hookcontext.MetricsStore;
 import io.prometheus.client.Counter;
@@ -30,26 +28,21 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.concurrent.TimeUnit;
 
+import static io.promagent.hooks.HttpContext.HTTP_METHOD;
+import static io.promagent.hooks.HttpContext.HTTP_PATH;
+
 @Hook(instruments = {
         "javax.servlet.Servlet",
-        "javax.servlet.Filter"}
-//        skipNestedCalls = true
-)
+        "javax.servlet.Filter"
+})
 public class ServletHook {
 
-    static final Key<String> SERVLET_HOOK_METHOD = new Key<>("servlet.hook.method");
-    static final Key<String> SERVLET_HOOK_PATH = new Key<>("servlet.hook.path");
-    private final HookContext context;
     private final Counter httpRequestsTotal;
     private final Summary httpRequestsDuration;
     private long startTime = 0;
-    private int stackDepth = 0;
+    private int stackDepth = 0; // Will be > 0 if a servlet is called by another servlet, so we only count the outermost call.
 
-    public ServletHook(HookContext context) {
-
-        this.context = context;
-
-        MetricsStore metricsStore = context.getMetricsStore();
+    public ServletHook(MetricsStore metricsStore) {
 
         httpRequestsTotal = metricsStore.createOrGet(new MetricDef<>(
                 "http_requests_total",
@@ -102,14 +95,13 @@ public class ServletHook {
     @Before(method = {"service", "doFilter"})
     public void before(ServletRequest request, ServletResponse response) {
         stackDepth++;
-        System.err.println("servlet before call number " + stackDepth + " on object " + this);
         if (stackDepth > 1) {
             return; // recursive call
         }
         if (HttpServletRequest.class.isAssignableFrom(request.getClass()) && HttpServletResponse.class.isAssignableFrom(response.getClass())) {
             HttpServletRequest req = (HttpServletRequest) request;
-            context.getThreadLocal().put(SERVLET_HOOK_METHOD, req.getMethod());
-            context.getThreadLocal().put(SERVLET_HOOK_PATH, stripPathParameters(req.getRequestURI()));
+            HttpContext.put(HTTP_METHOD, req.getMethod());
+            HttpContext.put(HTTP_PATH, stripPathParameters(req.getRequestURI()));
             startTime = System.nanoTime();
         }
     }
@@ -126,12 +118,12 @@ public class ServletHook {
             HttpServletResponse resp = (HttpServletResponse) response;
             try {
                 double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
-                String method = context.getThreadLocal().get(SERVLET_HOOK_METHOD).get();
-                String path = context.getThreadLocal().get(SERVLET_HOOK_PATH).get();
+                String method = HttpContext.get(HTTP_METHOD).get();
+                String path = HttpContext.get(HTTP_PATH).get();
                 httpRequestsTotal.labels(method, path, Integer.toString(resp.getStatus())).inc();
                 httpRequestsDuration.labels(method, path, Integer.toString(resp.getStatus())).observe(duration);
             } finally {
-                context.getThreadLocal().clear(SERVLET_HOOK_METHOD, SERVLET_HOOK_PATH);
+                HttpContext.clear(HTTP_METHOD, HTTP_PATH);
             }
         }
     }
