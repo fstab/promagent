@@ -62,18 +62,18 @@ public class InstrumentedClass {
 
     public void varargsExplicit(Object... args) {
         Object[] runtimeArgs = new Object[]{args};
-        List<HookInstance> hooks = before(runtimeArgs); // TODO: Verify if this mimics correctly the behavior of classes instrumented with byte buddy.
+        List<HookInstance> hooks = before(runtimeArgs); // TODO: Verify that this mimics correctly the behavior of classes instrumented with byte buddy.
         after(hooks, runtimeArgs);
     }
 
     public void varargsImplicit(Object[] args) {
         Object[] runtimeArgs = new Object[]{args};
-        List<HookInstance> hooks = before(runtimeArgs); // TODO: Verify if this mimics correctly the behavior of classes instrumented with byte buddy.
+        List<HookInstance> hooks = before(runtimeArgs); // TODO: Verify that this mimics correctly the behavior of classes instrumented with byte buddy.
         after(hooks, runtimeArgs);
     }
 
     public void varargsMixed(String s, String... more) {
-        List<HookInstance> hooks = before(s, more); // TODO: Verify if this mimics correctly the behavior of classes instrumented with byte buddy.
+        List<HookInstance> hooks = before(s, more); // TODO: Verify that this mimics correctly the behavior of classes instrumented with byte buddy.
         after(hooks, s, more);
     }
 
