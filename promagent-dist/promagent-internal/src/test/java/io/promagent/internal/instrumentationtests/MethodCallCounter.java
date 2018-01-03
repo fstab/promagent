@@ -1,4 +1,4 @@
-package io.promagent.internal;
+package io.promagent.internal.instrumentationtests;
 
 import org.junit.jupiter.api.Assertions;
 
@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Track method calls, used in {@link DelegatorTest}
+ * Track method calls, used in {@link ParameterTypesTest}
  */
 public class MethodCallCounter {
 

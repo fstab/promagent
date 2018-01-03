@@ -1,6 +1,6 @@
-package io.promagent.internal.examples.classes;
+package io.promagent.internal.instrumentationtests.classes;
 
-import io.promagent.internal.Instrumentor;
+import io.promagent.internal.instrumentationtests.Instrumentor;
 
 import java.util.List;
 
@@ -9,7 +9,9 @@ import java.util.List;
  * We use an interface to call these methods, because the actual implementation will come from a temporary
  * class loader defined in {@link Instrumentor}, which cannot be used directly.
  */
-public interface InstrumentedMethods {
+public interface IParameterTypesExample {
+
+    // TODO: add tests for enums and lambdas
 
     void noParam();
 

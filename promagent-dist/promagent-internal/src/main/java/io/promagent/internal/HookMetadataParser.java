@@ -16,6 +16,8 @@ package io.promagent.internal;
 
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
+import io.promagent.annotations.Returned;
+import io.promagent.annotations.Thrown;
 import io.promagent.internal.HookMetadata.MethodSignature;
 import net.bytebuddy.jar.asm.*;
 import org.apache.commons.io.IOUtils;
@@ -41,11 +43,11 @@ import java.util.zip.ZipFile;
  * classes that are not available in the agent's premain phase. We need to parse the metadata without instantiating
  * the hook classes.
  */
-class HookMetadataParser {
+public class HookMetadataParser {
 
     private final SortedSet<Path> hookJars;
 
-    HookMetadataParser(Collection<Path> hookJars) {
+    public HookMetadataParser(Collection<Path> hookJars) {
         this.hookJars = Collections.unmodifiableSortedSet(new TreeSet<>(hookJars));
     }
 
@@ -85,7 +87,7 @@ class HookMetadataParser {
      *
      * The classNameFilter is used to parse only specific classes from the JAR files.
      */
-    SortedSet<HookMetadata> parse(Predicate<String> classNameFilter) throws IOException, ClassNotFoundException {
+    public SortedSet<HookMetadata> parse(Predicate<String> classNameFilter) throws IOException, ClassNotFoundException {
         SortedSet<HookMetadata> result = new TreeSet<>();
         for (String className : listAllJavaClasses(hookJars, classNameFilter)) {
             byte[] binaryRepresentation = readBinaryRepresentation(className);
@@ -103,8 +105,19 @@ class HookMetadataParser {
 
                 @Override
                 public MethodVisitor visitMethod(int i, String method, String desc, String signature, String[] strings) {
-                    MethodSignatureBuilder builder = hookMetadata.newMethodSignature(Arrays.stream(Type.getArgumentTypes(desc)).map(Type::getClassName).collect(Collectors.toList()));
+                    List<String> parameterTypes = Arrays.stream(Type.getArgumentTypes(desc))
+                            .map(Type::getClassName)
+                            .collect(Collectors.toList());
+                    MethodSignatureBuilder builder = hookMetadata.newMethodSignature(parameterTypes);
                     return new MethodVisitor(Opcodes.ASM5, super.visitMethod(i, method, desc, signature, strings)) {
+                        @Override
+                        public AnnotationVisitor visitParameterAnnotation(int parameter, String desc, boolean visible) {
+                            if (visible && typeEquals(desc, Returned.class, Thrown.class)) {
+                                builder.markReturnedOrThrown(parameter);
+                            }
+                            return super.visitParameterAnnotation(parameter, desc, visible);
+                        }
+
                         @Override
                         public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
                             if (visible && typeEquals(desc, Before.class, After.class)) {
@@ -214,23 +227,42 @@ class HookMetadataParser {
      */
     private static class MethodSignatureBuilder {
 
+        private static class ParameterType {
+            final String type;
+            boolean isReturnedOrThrown; // method parameters annotated with @Returned or @Thrown will be ignored.
+
+            private ParameterType(String type) {
+                this.type = type;
+                this.isReturnedOrThrown = false;
+            }
+        }
+
         SortedSet<String> methodNames = new TreeSet<>();
-        List<String> parameterTypes = new ArrayList<>();
+        List<ParameterType> parameterTypes = new ArrayList<>();
 
         private void addMethodName(String methodName) {
             methodNames.add(methodName);
         }
 
         private void addParameterType(String parameterType) {
-            parameterTypes.add(parameterType);
+            parameterTypes.add(new ParameterType(parameterType));
         }
 
         private SortedSet<MethodSignature> build() {
+            List<String> strippedParameterTypes = parameterTypes.stream()
+                    .filter(p -> ! p.isReturnedOrThrown)
+                    .map(p -> p.type)
+                    .collect(Collectors.toList());
             SortedSet<MethodSignature> result = new TreeSet<>();
             for (String methodName : methodNames) {
-                result.add(new MethodSignature(methodName, parameterTypes));
+                result.add(new MethodSignature(methodName, strippedParameterTypes));
             }
             return result;
+        }
+
+        public void markReturnedOrThrown(int parameter) {
+            // We know that parameter is a valid index in parameterTypes.
+            parameterTypes.get(parameter).isReturnedOrThrown = true;
         }
     }
 

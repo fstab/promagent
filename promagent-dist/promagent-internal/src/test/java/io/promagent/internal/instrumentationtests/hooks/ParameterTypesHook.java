@@ -1,22 +1,23 @@
-package io.promagent.internal.examples.hooks;
+package io.promagent.internal.instrumentationtests.hooks;
 
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
 import io.promagent.hookcontext.MetricsStore;
-import io.promagent.internal.MethodCallCounter;
-import io.promagent.internal.examples.classes.Fruit;
-import io.promagent.internal.examples.classes.Fruit.Orange;
+import io.promagent.internal.instrumentationtests.MethodCallCounter;
+import io.promagent.internal.instrumentationtests.classes.Fruit;
+import io.promagent.internal.instrumentationtests.classes.Fruit.Orange;
+import io.promagent.internal.instrumentationtests.classes.ParameterTypesExample;
 
 import java.util.List;
 
 /**
- * Instrument all methods in {@link io.promagent.internal.examples.classes.InstrumentedClass}.
+ * Instrument all methods in {@link ParameterTypesExample}.
  */
-@Hook(instruments = "io.promagent.internal.examples.classes.InstrumentedClass")
-public class TestHook {
+@Hook(instruments = "io.promagent.internal.instrumentationtests.classes.ParameterTypesExample")
+public class ParameterTypesHook {
 
-    public TestHook(MetricsStore m) {}
+    public ParameterTypesHook(MetricsStore m) {}
 
     @Before(method = "noParam")
     public void before() {

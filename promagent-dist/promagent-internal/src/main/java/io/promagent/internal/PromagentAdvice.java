@@ -15,6 +15,7 @@
 package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -49,12 +50,14 @@ public class PromagentAdvice {
         }
     }
 
-    @OnMethodExit
+    @OnMethodExit(onThrowable = Throwable.class)
     public static void after(
             @Enter List<Object> hooks,
             @This Object that,
             @Origin Method method,
-            @AllArguments Object[] args
+            @AllArguments Object[] args,
+            @Return(typing = Assigner.Typing.DYNAMIC) Object returned, // support void == null and int == Integer
+            @Thrown Throwable thrown
     ) {
         try {
             // The following code is equivalent to:
@@ -62,8 +65,8 @@ public class PromagentAdvice {
             // However, the Delegator class will not be available in the context of the instrumented method,
             // so we must use our agent class loader to load the Delegator class and do the call via reflection.
             Class<?> delegator = ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.internal.Delegator");
-            Method afterMethod = delegator.getMethod("after", List.class, Method.class, Object[].class);
-            afterMethod.invoke(null, hooks, method, args);
+            Method afterMethod = delegator.getMethod("after", List.class, Method.class, Object[].class, Object.class, Throwable.class);
+            afterMethod.invoke(null, hooks, method, args, returned, thrown);
         } catch (Exception e) {
             System.err.println("Error executing Prometheus hook on " + that.getClass().getSimpleName());
             e.printStackTrace();

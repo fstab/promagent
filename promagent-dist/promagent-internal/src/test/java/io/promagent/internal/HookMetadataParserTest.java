@@ -14,9 +14,7 @@
 
 package io.promagent.internal;
 
-import io.promagent.annotations.After;
-import io.promagent.annotations.Before;
-import io.promagent.annotations.Hook;
+import io.promagent.annotations.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +52,7 @@ class HookMetadataParserTest {
         public void after(ServletRequest request, ServletResponse response) throws Exception {}
     }
 
-    @Hook(instruments = "com.example.Some.class")
+    @Hook(instruments = "com.example.Some")
     private static class PrimitiveTypesTestHook {
 
         @Before(method = "arrayArgs")
@@ -70,6 +68,12 @@ class HookMetadataParserTest {
         void before(Boolean a, Character b, Byte c, Short d, Integer f, Float g, Long h, Double i) {}
     }
 
+    @Hook(instruments = "com.example.ReturnThrown")
+    private static class ReturnedAndThrownTestHook {
+        @After(method = "div")
+        void after(int a, int b, @Returned int result, @Thrown Throwable exception) {}
+    }
+
     @Test
     void testServletHook() throws ClassNotFoundException, IOException {
         String expected = ServletTestHook.class.getName() + " instruments [javax.servlet.Filter, javax.servlet.Servlet]:\n" +
@@ -82,12 +86,21 @@ class HookMetadataParserTest {
 
     @Test
     void testPrimitiveTypes() throws ClassNotFoundException, IOException {
-        String expected = PrimitiveTypesTestHook.class.getName() + " instruments [com.example.Some.class]:\n" +
+        String expected = PrimitiveTypesTestHook.class.getName() + " instruments [com.example.Some]:\n" +
                 "  * arrayArgs(java.lang.Object[], int[], java.lang.String[])\n" +
                 "  * boxedArgs(java.lang.Boolean, java.lang.Character, java.lang.Byte, java.lang.Short, java.lang.Integer, java.lang.Float, java.lang.Long, java.lang.Double)\n" +
                 "  * noArgs()\n" +
                 "  * primitiveArgs(boolean, char, byte, short, int, float, long, double)";
         SortedSet<HookMetadata> result = parser.parse(className -> className.equals(PrimitiveTypesTestHook.class.getName()));
+        Assertions.assertEquals(1, result.size());
+        Assertions.assertEquals(expected, result.first().toString());
+    }
+
+    @Test
+    void testReturnedAndThrown() throws IOException, ClassNotFoundException {
+        String expected = ReturnedAndThrownTestHook.class.getName() + " instruments [com.example.ReturnThrown]:\n" +
+                "  * div(int, int)";
+        SortedSet<HookMetadata> result = parser.parse(className -> className.equals(ReturnedAndThrownTestHook.class.getName()));
         Assertions.assertEquals(1, result.size());
         Assertions.assertEquals(expected, result.first().toString());
     }

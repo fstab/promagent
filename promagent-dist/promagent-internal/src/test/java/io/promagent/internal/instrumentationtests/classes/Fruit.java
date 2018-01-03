@@ -1,4 +1,4 @@
-package io.promagent.internal.examples.classes;
+package io.promagent.internal.instrumentationtests.classes;
 
 /**
  * Example of object oriented inheritance.

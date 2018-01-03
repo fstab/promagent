@@ -17,6 +17,8 @@ package io.promagent.internal;
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
+import io.promagent.annotations.Returned;
+import io.promagent.annotations.Thrown;
 import io.promagent.hookcontext.MetricsStore;
 
 import java.lang.annotation.Annotation;
@@ -46,7 +48,7 @@ public class Delegator {
         this.threadLocal = ThreadLocal.withInitial(HashMap::new);
     }
 
-    static void init(SortedSet<HookMetadata> hookMetadata, MetricsStore metricsStore, ClassLoaderCache classLoaderCache) {
+    public static void init(SortedSet<HookMetadata> hookMetadata, MetricsStore metricsStore, ClassLoaderCache classLoaderCache) {
         instance = new Delegator(hookMetadata, metricsStore, classLoaderCache);
     }
 
@@ -68,14 +70,14 @@ public class Delegator {
     /**
      * Should be called from the Advice's @OnMethodExit method. First parameter is the list of hooks returned by before()
      */
-    public static void after(List<HookInstance> hookInstances, Method interceptedMethod, Object[] args) {
-        instance.doAfter(hookInstances, interceptedMethod, args);
+    public static void after(List<HookInstance> hookInstances, Method interceptedMethod, Object[] args, Object returned, Throwable thrown) {
+        instance.doAfter(hookInstances, interceptedMethod, args, returned, thrown);
     }
 
-    private void doAfter(List<HookInstance> hookInstances, Method interceptedMethod, Object[] args) {
+    private void doAfter(List<HookInstance> hookInstances, Method interceptedMethod, Object[] args, Object returned, Throwable thrown) {
         if (hookInstances != null) {
             for (HookInstance hookInstance : hookInstances) {
-                invokeAfter(hookInstance.getInstance(), interceptedMethod, args);
+                invokeAfter(hookInstance.getInstance(), interceptedMethod, args, returned, thrown);
                 if (!hookInstance.isRecursiveCall()) {
                     threadLocal.get().remove(hookInstance.getInstance().getClass());
                 }
@@ -83,18 +85,6 @@ public class Delegator {
         }
     }
 
-    /**
-     * Take an existing hook instance from a thread local or create a new one.
-     * Hook classes must satisfy the following criteria:
-     * <ul>
-     *     <li>that.getClass() is assignable to the value of the Hook's instruments annotation
-     *     <li>The name of the instrumented method and the number of arguments match.
-     * </ul>
-     * The result may still contain hooks that don't match. This happens if the Hook method differs
-     * only in the argument types of the intercepted method. However, these Hooks will
-     * be ignored when calling {@link #invokeBefore(Object, Method, Object...)}
-     * and {@link #invokeAfter(Object, Method, Object...)}, so it's ok to include them here.
-     */
     private List<HookInstance> loadFromThreadLocalOrCreate(Object that, Method interceptedMethod) {
         return hookMetadata.stream()
                 .filter(hook -> classOrInterfaceMatches(that.getClass(), hook))
@@ -179,17 +169,35 @@ public class Delegator {
 
     // TODO: We could extend this to find the "closest" match, like in Java method calls.
     private static boolean parameterTypesMatch(Method hookMethod, Method interceptedMethod) {
-        if (hookMethod.getParameterCount() != interceptedMethod.getParameterCount()) {
+        List<Class<?>> hookParameterTypes = stripReturnedAndThrown(hookMethod);
+        if (hookParameterTypes.size() != interceptedMethod.getParameterCount()) {
             return false;
         }
-        for (int i = 0; i < hookMethod.getParameterCount(); i++) {
-            Class<?> hookParam = hookMethod.getParameterTypes()[i];
+        for (int i = 0; i < hookParameterTypes.size(); i++) {
+            Class<?> hookParam = hookParameterTypes.get(i);
             Class<?> interceptedParam = interceptedMethod.getParameterTypes()[i];
             if (!hookParam.equals(interceptedParam)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static List<Class<?>> stripReturnedAndThrown(Method hookMethod) {
+        Class<?>[] allTypes = hookMethod.getParameterTypes();
+        Annotation[][] annotations = hookMethod.getParameterAnnotations();
+        if (allTypes.length != annotations.length) {
+            throw new HookException("Method.getParameterAnnotations() returned an unexpected value. This is a bug in promagent.");
+        }
+        List<Class<?>> result = new ArrayList<>();
+        for (int i=0; i<allTypes.length; i++) {
+            if (Arrays.stream(annotations[i])
+                    .map(Annotation::annotationType)
+                    .noneMatch(a -> Returned.class.equals(a) || Thrown.class.equals(a))) {
+                result.add(allTypes[i]);
+            }
+        }
+        return result;
     }
 
     private HookInstance loadFromTheadLocalOrCreate(Class<?> hookClass) {
@@ -213,18 +221,18 @@ public class Delegator {
     /**
      * Invoke the matching Hook methods annotated with @Before
      */
-    private static void invokeBefore(Object hookInstance, Method interceptedMethod, Object... args) throws HookException {
-        invoke(Before.class, hookInstance, interceptedMethod, args);
+    private static void invokeBefore(Object hookInstance, Method interceptedMethod, Object[] args) throws HookException {
+        invoke(Before.class, hookInstance, interceptedMethod, args, null, null);
     }
 
     /**
      * Invoke the matching Hook methods annotated with @After
      */
-    private static void invokeAfter(Object hookInstance, Method interceptedMethod, Object... args) throws HookException {
-        invoke(After.class, hookInstance, interceptedMethod, args);
+    private static void invokeAfter(Object hookInstance, Method interceptedMethod, Object[] args, Object returned, Throwable thrown) throws HookException {
+        invoke(After.class, hookInstance, interceptedMethod, args, returned, thrown);
     }
 
-    private static void invoke(Class<? extends Annotation> annotation, Object hookInstance, Method interceptedMethod, Object... args) throws HookException {
+    private static void invoke(Class<? extends Annotation> annotation, Object hookInstance, Method interceptedMethod, Object[] args, Object returned, Throwable thrown) throws HookException {
         if (args.length != interceptedMethod.getParameterCount()) {
             throw new IllegalArgumentException("Number of provided arguments is " + args.length + ", but interceptedMethod expects " + interceptedMethod.getParameterCount() + " argument(s).");
         }
@@ -233,10 +241,30 @@ public class Delegator {
                 if (!method.isAccessible()) {
                     method.setAccessible(true);
                 }
-                method.invoke(hookInstance, args);
+                method.invoke(hookInstance, addReturnedAndThrownArgs(method, args, returned, thrown));
             } catch (Exception e) {
                 throw new HookException("Failed to call " + method.getName() + "() on " + hookInstance.getClass().getSimpleName() + ": " + e.getMessage(), e);
             }
         }
+    }
+
+    private static Object[] addReturnedAndThrownArgs(Method hookMethod, Object[] args, Object returned, Throwable thrown) {
+        Annotation[][] annotations = hookMethod.getParameterAnnotations();
+        List<Object> result = new ArrayList<>();
+        int arg = 0;
+        for (Annotation[] annotation : annotations) {
+            if (Arrays.stream(annotation)
+                    .map(Annotation::annotationType)
+                    .anyMatch(Returned.class::equals)) {
+                result.add(returned);
+            } else if (Arrays.stream(annotation)
+                    .map(Annotation::annotationType)
+                    .anyMatch(Thrown.class::equals)) {
+                result.add(thrown);
+            } else {
+                result.add(args[arg++]);
+            }
+        }
+        return result.toArray();
     }
 }

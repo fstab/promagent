@@ -1,13 +1,13 @@
-package io.promagent.internal.examples.classes;
+package io.promagent.internal.instrumentationtests.classes;
 
-import io.promagent.internal.Instrumentor;
+import io.promagent.internal.instrumentationtests.Instrumentor;
 
 import java.util.List;
 
 /**
  * These methods will be instrumented by {@link Instrumentor}.
  */
-public class InstrumentedClass implements InstrumentedMethods {
+public class ParameterTypesExample implements IParameterTypesExample {
 
     @Override
     public void noParam() {}

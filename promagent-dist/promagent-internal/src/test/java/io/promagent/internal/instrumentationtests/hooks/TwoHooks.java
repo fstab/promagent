@@ -1,17 +1,17 @@
-package io.promagent.internal.examples.hooks;
+package io.promagent.internal.instrumentationtests.hooks;
 
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
 import io.promagent.hookcontext.MetricsStore;
-import io.promagent.internal.MethodCallCounter;
-import io.promagent.internal.examples.classes.Fruit;
+import io.promagent.internal.instrumentationtests.MethodCallCounter;
+import io.promagent.internal.instrumentationtests.classes.Fruit;
 
 /**
  * Two hooks instrumenting the same class.
  */
 public class TwoHooks {
 
-    @Hook(instruments = "io.promagent.internal.examples.classes.InstrumentedClass")
+    @Hook(instruments = "io.promagent.internal.instrumentationtests.classes.ParameterTypesExample")
     public static class HookOne {
 
         public HookOne(MetricsStore m) {}
@@ -22,7 +22,7 @@ public class TwoHooks {
         }
     }
 
-    @Hook(instruments = "io.promagent.internal.examples.classes.InstrumentedClass")
+    @Hook(instruments = "io.promagent.internal.instrumentationtests.classes.ParameterTypesExample")
     public static class HookTwo {
 
         public HookTwo(MetricsStore m) {}
