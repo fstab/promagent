@@ -4,7 +4,7 @@ import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
 import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.MethodCallCounter;
-import io.promagent.internal.examples.classes.InstrumentedClass;
+import io.promagent.internal.examples.classes.Fruit;
 
 /**
  * Test hook with no @After method
@@ -15,7 +15,7 @@ public class OnlyBeforeHook {
     public OnlyBeforeHook(MetricsStore m) {}
 
     @Before(method = "objects")
-    public void before(Object o, InstrumentedClass.Fruit f, InstrumentedClass.Orange x) {
+    public void before(Object o, Fruit f, Fruit.Orange x) {
         MethodCallCounter.observe(this, "before", o, f, x);
     }
 }

@@ -16,18 +16,15 @@ package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.hookcontext.MetricsStore;
-import io.promagent.internal.examples.classes.InstrumentedClass;
-import io.promagent.internal.examples.classes.InstrumentedClass.Fruit;
-import io.promagent.internal.examples.classes.InstrumentedClass.Orange;
-import io.promagent.internal.examples.hooks.OnlyAfterHook;
-import io.promagent.internal.examples.hooks.OnlyBeforeHook;
-import io.promagent.internal.examples.hooks.TestHook;
-import io.promagent.internal.examples.hooks.TwoHooks;
+import io.promagent.internal.examples.classes.Fruit;
+import io.promagent.internal.examples.classes.InstrumentedMethods;
+import io.promagent.internal.examples.hooks.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -38,7 +35,7 @@ import java.util.stream.Stream;
 
 class DelegatorTest {
 
-    private final InstrumentedClass instrumentedInstance = new InstrumentedClass();
+    private InstrumentedMethods instrumentedMethods;
 
     private final byte b = (byte) 0x23;
     private final short s = (short) 42;
@@ -49,12 +46,12 @@ class DelegatorTest {
     private final boolean x = true;
     private final char c = 'a';
 
-    private final Orange obj1 = new Orange();
-    private final Orange obj2 = new Orange();
-    private final Orange obj3 = new Orange();
+    private final Fruit.Orange obj1 = new Fruit.Orange();
+    private final Fruit.Orange obj2 = new Fruit.Orange();
+    private final Fruit.Orange obj3 = new Fruit.Orange();
 
     @BeforeEach
-    void setUp() throws IOException, ClassNotFoundException {
+    void setUp() throws Exception {
         SortedSet<HookMetadata> hookMetadata = loadHookMetadata(
                 TestHook.class,
                 TwoHooks.HookOne.class,
@@ -63,6 +60,7 @@ class DelegatorTest {
                 OnlyAfterHook.class
         );
         ClassLoaderCache classLoaderCache = mockClassLoaderCache();
+        instrumentedMethods = Instrumentor.instrument(hookMetadata);
         MetricsStore metricsStore = mockMetricsStore();
         Delegator.init(hookMetadata, metricsStore, classLoaderCache);
         MethodCallCounter.reset();
@@ -71,7 +69,7 @@ class DelegatorTest {
     @Test
     void testNullArgs() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.objects(null, obj2, null);
+            instrumentedMethods.objects(null, obj2, null);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", null, obj2, null);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", null, obj2, null);
         }
@@ -80,7 +78,7 @@ class DelegatorTest {
     @Test
     void testBeforeOrAfterMissing() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.objects(obj1, obj2, obj3);
+            instrumentedMethods.objects(obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, OnlyBeforeHook.class, "before", obj1, obj2, obj3);
@@ -91,7 +89,7 @@ class DelegatorTest {
     @Test
     void testNoArg() {
         for (int i=1; i<=2; i++) {
-            instrumentedInstance.noParam();
+            instrumentedMethods.noParam();
             MethodCallCounter.assertNumCalls(i, TestHook.class, "before");
             MethodCallCounter.assertNumCalls(i, TestHook.class, "after");
         }
@@ -100,7 +98,7 @@ class DelegatorTest {
     @Test
     void testPrimitiveTypes() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.primitiveTypes(b, s, i, l, f, d, x, c);
+            instrumentedMethods.primitiveTypes(b, s, i, l, f, d, x, c);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", b, s, i, l, f, d, x, c);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", b, s, i, l, f, d, x, c);
         }
@@ -109,7 +107,7 @@ class DelegatorTest {
     @Test
     void testBoxedTypes() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.boxedTypes(b, s, i, l, f, d, x, c);
+            instrumentedMethods.boxedTypes(b, s, i, l, f, d, x, c);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", b, s, i, l, f, d, x, c);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", b, s, i, l, f, d, x, c);
         }
@@ -118,7 +116,7 @@ class DelegatorTest {
     @Test
     void testObjects() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.objects(obj1, obj2, obj3);
+            instrumentedMethods.objects(obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before2", obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", obj1, obj2, obj3);
@@ -132,7 +130,7 @@ class DelegatorTest {
     @Test
     void testTwoHooks() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.objects(obj1, obj2, obj3);
+            instrumentedMethods.objects(obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, TwoHooks.HookOne.class, "before", obj1, obj2, obj3);
             MethodCallCounter.assertNumCalls(n, TwoHooks.HookTwo.class, "before", obj1, obj2, obj3);
         }
@@ -149,7 +147,7 @@ class DelegatorTest {
         boolean[] booleanArray = new boolean[] {x};
         char[] charArray = new char[] {c};
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.primitiveArrays(byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
+            instrumentedMethods.primitiveArrays(byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
         }
@@ -166,7 +164,7 @@ class DelegatorTest {
         Boolean[] booleanArray = new Boolean[] {x};
         Character[] charArray = new Character[] {c};
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.boxedArrays(byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
+            instrumentedMethods.boxedArrays(byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", byteArray, shortArray, intArray, longArray, floatArray, doubleArray, booleanArray, charArray);
         }
@@ -176,9 +174,9 @@ class DelegatorTest {
     void testObjectArrays() {
         Object[] arr1 = new Object[] {obj1, obj2};
         Fruit[] arr2 = new Fruit[] {obj3};
-        Orange[] arr3 = new Orange[0];
+        Fruit.Orange[] arr3 = new Fruit.Orange[0];
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.objectArrays(arr1, arr2, arr3);
+            instrumentedMethods.objectArrays(arr1, arr2, arr3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", arr1, arr2, arr3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", arr1, arr2, arr3);
         }
@@ -188,9 +186,9 @@ class DelegatorTest {
     void testGenerics() {
         List<Object> list1 = Arrays.asList(obj1, obj2);
         List<Fruit> list2 = Collections.singletonList(obj3);
-        List<Orange> list3 = new ArrayList<>();
+        List<Fruit.Orange> list3 = new ArrayList<>();
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.generics(list1, list2, list3);
+            instrumentedMethods.generics(list1, list2, list3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", list1, list2, list3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", list1, list2, list3);
         }
@@ -199,8 +197,8 @@ class DelegatorTest {
     @Test
     void testVarargsExplicit() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.varargsExplicit(obj1, obj2, obj3);
-            instrumentedInstance.varargsExplicit();
+            instrumentedMethods.varargsExplicit(obj1, obj2, obj3);
+            instrumentedMethods.varargsExplicit();
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before");
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after");
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", obj1, obj2, obj3);
@@ -214,9 +212,9 @@ class DelegatorTest {
         Object[] arr2 = new Object[] {};
         Object[] arr3 = null;
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.varargsImplicit(arr1);
-            instrumentedInstance.varargsImplicit(arr2);
-            instrumentedInstance.varargsImplicit(arr3);
+            instrumentedMethods.varargsImplicit(arr1);
+            instrumentedMethods.varargsImplicit(arr2);
+            instrumentedMethods.varargsImplicit(arr3);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", arr1);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", arr1);
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", arr2);
@@ -229,8 +227,8 @@ class DelegatorTest {
     @Test
     void testVarargsMixed() {
         for (int n=1; n<=2; n++) {
-            instrumentedInstance.varargsMixed("hello");
-            instrumentedInstance.varargsMixed("hello", "world");
+            instrumentedMethods.varargsMixed("hello");
+            instrumentedMethods.varargsMixed("hello", "world");
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", "hello");
             MethodCallCounter.assertNumCalls(n, TestHook.class, "after", "hello");
             MethodCallCounter.assertNumCalls(n, TestHook.class, "before", "hello", "world");
@@ -251,7 +249,7 @@ class DelegatorTest {
         for (RecursiveRunConfig runConfig : runConfigs) {
             executor.submit(() -> {
                 for (int i=0; i<runConfig.nRuns; i++) {
-                    instrumentedInstance.recursive(runConfig.nRecursiveCalls);
+                    instrumentedMethods.recursive(runConfig.nRecursiveCalls);
                     Thread.sleep(100); // sleep a bit to make sure all threads are really running in parallel.
                 }
                 return null;
@@ -294,9 +292,12 @@ class DelegatorTest {
         return parser.parse(className -> Stream.of(hooks).anyMatch(hookClass -> hookClass.getName().equals(className)));
     }
 
-    private ClassLoaderCache mockClassLoaderCache() {
+    private ClassLoaderCache mockClassLoaderCache() throws NoSuchFieldException, IllegalAccessException {
         ClassLoaderCache mockedClassLoaderCache = Mockito.mock(ClassLoaderCache.class);
         Mockito.when(mockedClassLoaderCache.currentClassLoader()).thenReturn(Thread.currentThread().getContextClassLoader());
+        Field instance = ClassLoaderCache.class.getDeclaredField("instance");
+        instance.setAccessible(true);
+        instance.set(null, mockedClassLoaderCache);
         return mockedClassLoaderCache;
     }
 

@@ -89,7 +89,7 @@ public class HookMetadata implements Comparable<HookMetadata> {
     @Override
     public String toString() { // TODO: instruments is a Set
         String delimiter = System.lineSeparator() + "  * ";
-        return String.join(", ", instruments) + " (" + hookClassName + "):" + delimiter + String.join(delimiter, strings(methods));
+        return hookClassName + " instruments [" + String.join(", ", instruments) + "]:" + delimiter + String.join(delimiter, strings(methods));
     }
 
     @Override

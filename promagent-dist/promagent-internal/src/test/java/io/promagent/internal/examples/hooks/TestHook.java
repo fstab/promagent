@@ -5,11 +5,14 @@ import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
 import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.MethodCallCounter;
-import io.promagent.internal.examples.classes.InstrumentedClass.Fruit;
-import io.promagent.internal.examples.classes.InstrumentedClass.Orange;
+import io.promagent.internal.examples.classes.Fruit;
+import io.promagent.internal.examples.classes.Fruit.Orange;
 
 import java.util.List;
 
+/**
+ * Instrument all methods in {@link io.promagent.internal.examples.classes.InstrumentedClass}.
+ */
 @Hook(instruments = "io.promagent.internal.examples.classes.InstrumentedClass")
 public class TestHook {
 

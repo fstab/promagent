@@ -72,8 +72,7 @@ class HookMetadataParserTest {
 
     @Test
     void testServletHook() throws ClassNotFoundException, IOException {
-        String expected = "" +
-                "javax.servlet.Filter, javax.servlet.Servlet (" + ServletTestHook.class.getName() + "):\n" +
+        String expected = ServletTestHook.class.getName() + " instruments [javax.servlet.Filter, javax.servlet.Servlet]:\n" +
                 "  * doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse)\n" +
                 "  * service(javax.servlet.ServletRequest, javax.servlet.ServletResponse)";
         SortedSet<HookMetadata> result = parser.parse(className -> className.equals(ServletTestHook.class.getName()));
@@ -83,8 +82,7 @@ class HookMetadataParserTest {
 
     @Test
     void testPrimitiveTypes() throws ClassNotFoundException, IOException {
-        String expected = "" +
-                "com.example.Some.class (" + PrimitiveTypesTestHook.class.getName() + "):\n" +
+        String expected = PrimitiveTypesTestHook.class.getName() + " instruments [com.example.Some.class]:\n" +
                 "  * arrayArgs(java.lang.Object[], int[], java.lang.String[])\n" +
                 "  * boxedArgs(java.lang.Boolean, java.lang.Character, java.lang.Byte, java.lang.Short, java.lang.Integer, java.lang.Float, java.lang.Long, java.lang.Double)\n" +
                 "  * noArgs()\n" +

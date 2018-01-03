@@ -16,6 +16,7 @@ package io.promagent.internal;
 
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.hookcontext.MetricsStore;
+import io.promagent.internal.HookMetadata.MethodSignature;
 import io.promagent.internal.jmx.Exporter;
 import io.promagent.internal.jmx.PromagentCollectorRegistry;
 import net.bytebuddy.agent.builder.AgentBuilder;
@@ -41,22 +42,21 @@ public class Promagent {
             if (args.containsKey("port")) {
                 BuiltInServer.run(args.get("host"), args.get("port"), registry);
             }
-            AgentBuilder agentBuilder = new AgentBuilder.Default()
-                    .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
-                    .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
             ClassLoaderCache classLoaderCache = ClassLoaderCache.getInstance();
             List<Path> hookJars = classLoaderCache.getPerDeploymentJars();
             SortedSet<HookMetadata> hookMetadata = new HookMetadataParser(hookJars).parse();
             MetricsStore metricsStore = new MetricsStore(registry);
             Delegator.init(hookMetadata, metricsStore, classLoaderCache);
+            printHookMetadata(hookMetadata);
+
+            AgentBuilder agentBuilder = new AgentBuilder.Default()
+                    .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
+                    .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
+                    // .with(AgentBuilder.Listener.StreamWriting.toSystemError()); // use this to see exceptions thrown in instrumented code
             agentBuilder = applyHooks(agentBuilder, hookMetadata, classLoaderCache);
             agentBuilder.installOn(inst);
-            System.out.println("Promagent instrumenting the following classes or interfaces:");
-            for (HookMetadata m : hookMetadata) {
-                System.out.println(m);
-            }
 
-            // TODO -- this is an experiment supporting collectors directly (in addition to hooks)
+            // TODO -- the following is an experiment supporting collectors directly (in addition to hooks)
             io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) classLoaderCache.currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
             registry.registerNoJmx(jmxCollector);
 
@@ -68,33 +68,54 @@ public class Promagent {
     /**
      * Add {@link ElementMatcher} for the hooks.
      */
-    private static AgentBuilder applyHooks(AgentBuilder agentBuilder, Collection<HookMetadata> hookMetadata, ClassLoaderCache classLoaderCache) {
-        for (HookMetadata metadata : hookMetadata) {
-            ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
-            for (HookMetadata.MethodSignature methodSignature : metadata.getMethods()) {
-                // If you are using Eclipse or Visual Studio Code and see a syntax error here, it could be this one:
-                // https://github.com/eclipse/eclipse.jdt.ls/issues/291
-                ElementMatcher.Junction<MethodDescription> junction = ElementMatchers
-                        .named(methodSignature.getMethodName())
-                        .and(not(isAbstract()))
-                        .and(isPublic())
-                        .and(takesArguments(methodSignature.getParameterTypes().size()));
-                for (int i = 0; i < methodSignature.getParameterTypes().size(); i++) {
-                    // TODO: Tested for Objects (javax.servlet.Servlet) and primitive types (int), but not for arrays and generics yet.
-                    junction = junction.and(takesArgument(i, hasSuperType(named(methodSignature.getParameterTypes().get(i)))));
-                }
-                methodMatcher = methodMatcher.or(junction);
-            }
-            for (String instruments : metadata.getInstruments()) {
-                agentBuilder = agentBuilder
-                        .type(ElementMatchers.hasSuperType(named(instruments)))
-                        .transform(new AgentBuilder.Transformer.ForAdvice()
-                                .include(classLoaderCache.currentClassLoader())
-                                .advice(methodMatcher, PromagentAdvice.class.getName())
-                        );
-            }
+    private static AgentBuilder applyHooks(AgentBuilder agentBuilder, SortedSet<HookMetadata> hookMetadata, ClassLoaderCache classLoaderCache) {
+        Map<String, SortedSet<MethodSignature>> instruments = getInstruments(hookMetadata);
+        for (Map.Entry<String, SortedSet<MethodSignature>> entry : instruments.entrySet()) {
+            String instrumentedClassName = entry.getKey();
+            Set<MethodSignature> instrumentedMethods = entry.getValue();
+            agentBuilder = agentBuilder
+                    .type(ElementMatchers.hasSuperType(named(instrumentedClassName)))
+                    .transform(new AgentBuilder.Transformer.ForAdvice()
+                            .include(classLoaderCache.currentClassLoader()) // must be able to load PromagentAdvice
+                            .advice(matchAnyMethodIn(instrumentedMethods), PromagentAdvice.class.getName())
+                    );
         }
         return agentBuilder;
+    }
+
+    /**
+     * key: name of instrumented class or interface, value: set of instrumented methods for that class or interface
+     */
+    public static Map<String, SortedSet<MethodSignature>> getInstruments(Set<HookMetadata> hooks) {
+        Map<String, SortedSet<MethodSignature>> result = new TreeMap<>();
+        for (HookMetadata hookMetadata : hooks) {
+            for (String instruments : hookMetadata.getInstruments()) {
+                if (!result.containsKey(instruments)) {
+                    result.put(instruments, new TreeSet<>());
+                }
+                result.get(instruments).addAll(hookMetadata.getMethods());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Returns a byte buddy matcher matching any method contained in methodSignatures.
+     */
+    public static ElementMatcher<MethodDescription> matchAnyMethodIn(Set<MethodSignature> methodSignatures) {
+        ElementMatcher.Junction<MethodDescription> methodMatcher = ElementMatchers.none();
+        for (MethodSignature methodSignature : methodSignatures) {
+            ElementMatcher.Junction<MethodDescription> junction = ElementMatchers
+                    .named(methodSignature.getMethodName())
+                    .and(not(isAbstract()))
+                    .and(isPublic())
+                    .and(takesArguments(methodSignature.getParameterTypes().size()));
+            for (int i = 0; i < methodSignature.getParameterTypes().size(); i++) {
+                junction = junction.and(takesArgument(i, named(methodSignature.getParameterTypes().get(i))));
+            }
+            methodMatcher = methodMatcher.or(junction);
+        }
+        return methodMatcher;
     }
 
     /**
@@ -113,5 +134,12 @@ public class Promagent {
             }
         }
         return result;
+    }
+
+    private static void printHookMetadata(SortedSet<HookMetadata> hookMetadata) {
+        System.out.println("Promagent instrumenting the following classes or interfaces:");
+        for (HookMetadata m : hookMetadata) {
+            System.out.println(m);
+        }
     }
 }
