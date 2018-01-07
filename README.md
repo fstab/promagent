@@ -5,15 +5,16 @@ Promagent
 
 _Prometheus Monitoring for Java Web Applications without Modifying their Source Code._
 
-Promagent is a framework for creating Java agents providing [Prometheus](https://prometheus.io/) metrics for Java Web applications without modifying the applications' source code.
-Promagent uses the [Byte Buddy](http://bytebuddy.net/) bytecode manipulation library to insert Prometheus metrics during application startup.
+The `promagent-api` and `promagent-maven-plugin` are tools for creating custom Java agents for [Prometheus](https://prometheus.io/) monitoring.
+The Java agents instrument Java Web Applications with [Prometheus](https://prometheus.io/) metrics without modifying the applications' source code.
+The agents use the [Byte Buddy](http://bytebuddy.net/) bytecode manipulation library to insert Prometheus metrics during application startup.
 
 The Promagent code repository contains two projects:
 
 - `promagent-framework`: Provides, among other things, the `promagent-api` and the `promagent-maven-plugin` helping you to create your own agents.
-- `promagent-example`: An agent providing example metrics for Spring and Java EE applications:
+- `promagent-example`: An example agent providing metrics for _Spring Boot_ and _Java EE_ applications:
   - HTTP: Number and duration of web requests.
-  - SQL: Number and duration of database queries.
+  - SQL: Number and duration of database queries (including the HTTP context if the query was triggered by a REST call).
 
 The example agent was tested with [Spring Boot](https://projects.spring.io/spring-boot/) and with the [Wildfly application server](http://wildfly.org/).
 
@@ -21,14 +22,6 @@ Example
 -------
 
 ![screenshot](screenshot.png)
-
-Some example Prometheus queries evaluating Promagent metrics:
-
-* Top five most frequent SQL queries: `topk(5, sql_queries_total)`.
-* Top five longest-running HTTP requests (median): `topk(5, http_request_duration{quantile="0.5"})`.
-* If a database query is triggered within the context of an HTTP request, the HTTP `path` is added as a label to the `sql_*` metrics. That way, we can relate database queries to the corresponding HTTP requests:
-  * Time ratio spent on the database when processing an HTTP request: `sum(sql_query_duration{quantile="0.5"}) by (query,method,path) / on(method,path) group_left sum(http_request_duration{quantile="0.5"}) by (method,path)`.
-  * Which database queries are triggered how often for which HTTP request: `sum(sql_queries_total) by (method, path, query) / on(method, path) group_left sum(http_requests_total) by (method, path)`.
 
 ### Downloading and Compiling the Example Agent
 
@@ -55,7 +48,7 @@ mvn clean verify
 cd ..
 ```
 
-### Running the Example with a Spring Boot Demo Application
+### Spring Boot Demo
 
 _The following runs with Java 8 and was not tested with Java 9 yet._
 
@@ -79,7 +72,7 @@ java \
 Go to [http://localhost:8080](http://localhost:8080) to view the Spring Boot application,
 go to [http://localhost:9300/metrics](http://localhost:9300/metrics) to view the Prometheus metrics.
 
-### Running the Example with a Java EE Demo Application on Wildfly
+### Java EE Demo on Wildfly
 
 _This demo runs with Java 8. For a Java 9 version, see [JAVA_9_DEMO.md](JAVA_9_DEMO.md)._
 
@@ -130,7 +123,7 @@ A Promagent is implemented as a set of Hooks. A Hook is a Java class meeting the
 
 * The class is annotated with `@Hook`.
 * The class has a public constructor taking a single parameter of type `MetricsStore`.
-* The class provides methods annotated with `@Before` or `@After`. Those methods must take exactly the same parameters as the method you want to intercept.
+* The class provides methods annotated with `@Before` or `@After`. Those methods must take exactly the same parameters as the method you want to intercept (there is one exception to that rule: `@Afer` methods may have two additional parameters annotated with `@Returned` and `@Thrown`, see _Hook Annotations_ below).
 
 The best way to get started is to have a look at the `ServletHook` and `JdbcHook` in the `promagent-example`.
 
@@ -143,7 +136,6 @@ public class ServletHook {
     private final Counter servletRequestsTotal;
 
         public ServletHook(MetricsStore metricsStore) {
-    
             servletRequestsTotal = metricsStore.createOrGet(new MetricDef<>(
                     "servlet_requests_total",
                     (name, registry) -> Counter.build()
@@ -160,14 +152,14 @@ public class ServletHook {
 }
 ```
 
-A Promagent needs two entries in the `pom.xml`. First, the `promagent-api` must be included as a dependency:
+To build a Promagent project with Maven, you need two entries in the `pom.xml`. First, the `promagent-api` must be included as a dependency:
 
 ```xml
 <dependency>
     <groupId>io.promagent</groupId>
     <artifactId>promagent-api</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <scope>provided</scope> <!-- will be made available by the promagent-maven-plugin -->
+    <scope>provided</scope> <!-- provided at runtime by the internal agent implementation -->
 </dependency>
 ```
 
@@ -209,6 +201,10 @@ The simple `ServletHook` above would count nested Servlet calls, the value of `s
 The `ServletHook` in the `promagent-example` project prevents this by tracking the current stack depth, so the `http_requests_total` metric counts the actual number of HTTP requests.
 Future Promagent versions will provide a more flexible `@Hook` annotation so users can configure if the Hook should be invoked for nested calls or not.
 
+While this section uses HTTP servlets to explain the Hook life cycle, the same principle does also make sens for other scenarios, like JDBC queries.
+
+However, Promagent relies on Thread-based request processing and does currently not support reactive applications.
+
 ### The Hook's Constructor Parameter
 
 Most applications use static variables to maintain Prometheus metrics, as described in the [Prometheus Client Library for Java](https://github.com/prometheus/client_java) documentation:
@@ -221,7 +217,8 @@ static final Counter counter = Counter.build()
     .register();
 ```
 
-Unfortunately, static variables are maintained per deployment in an application server. When an application is re-deployed, a new instance of the same `Counter` is created, which causes conflicts in the Prometheus registry. It is also impossible to instrument a mix of internal modules (like an internal Servlet in the JAX-RS implementation) and deployments (like Servlets in a WAR file) that way.
+Unfortunately, static variables are maintained per deployment in an application server. When an application is re-deployed, a new instance of the same `Counter` is created, which causes conflicts in the Prometheus registry (as the Prometheus registry is maintained by Promagent, it survives re-deployments).
+Moreover, it is impossible to instrument a mix of internal modules (like an internal Servlet in the JAX-RS implementation) and deployments (like Servlets in a WAR file) with static variables.
 
 To prevent this, Promagent requires Hooks to use the `MetricsStore` to maintain metrics:
 
@@ -240,11 +237,11 @@ The Promagent library will take care that the `Counter` is created only once, an
 
 ### Hook Annotations
 
-* `@Hook`: Hooks are annotated with the `@Hook(instruments = {...})` annotations. The `instruments` parameter takes a list of Strings specifying the names of the classes or interfaces to be instrumented, like `{"javax.servlet.Servlet", "javax.servlet.Filter"}`. The Hook instruments not only the classes or interfaces themselves, but all sub-classes or implementations of these classes or interfaces.
-* `@Before`: Hook methods annotated with `@Before(method = {...})` are invoked when an instrumented method is entered. The `methods` parameter takes a list of Strings specifying the names of the intercepted methods, like `{"service", "doFilter"}`. The number and types of arguments are derived from the method itself, i.e. the Hook method annotated with `@Before` must take the exact same parameters as the methods it wants to instrument.
-* `@After`: Hook methods annotated with `@After(method = {...})` are invoked when an instrumented method is left. `@After` methods are always called, even if the instrumented method terminates with an Exception. The semantics is the same as with the `@Before` annotation. If a Hook is only interested in the number of calls but not in the duration, it is sufficient to implement either only a `@Before` method or only an `@After` method and omit the other.
+* `@Hook`: Hook classes are annotated with `@Hook(instruments = {...})`. The `instruments` parameter takes a list of Strings specifying the names of the classes or interfaces to be instrumented, like `{"javax.servlet.Servlet", "javax.servlet.Filter"}`. The Hook instruments not only the classes or interfaces themselves, but all sub-classes or implementations of these classes or interfaces.
+* `@Before`: Hook methods annotated with `@Before(method = {...})` are invoked when an instrumented method is entered. The `method` parameter takes a list of Strings specifying the names of the intercepted methods, like `{"service", "doFilter"}`. The number and types of arguments are derived from the method itself, i.e. the Hook method annotated with `@Before` must take the exact same parameters as the methods it wants to instrument.
+* `@After`: Hook methods annotated with `@After(method = {...})` are invoked when an instrumented method is left. `@After` methods are always called, even if the instrumented method terminates with an Exception. The semantics is the same as with the `@Before` annotation. Methods annotated with `@After` may have two additional parameters, one parameter annotated with `@Returned` and one parameter annotated with `@Thrown`. These parameters are ignored when determining the signature of the instrumented method.
 * `@Returned`: It might be useful to learn the return value of an instrumented method. In order to do so, methods annotated with `@After` may have an additional parameter annotated with `@Returned`, where the type corresponds to the return type of the intercepted method. If the instrumented method returns regularly, the return value is provided. If the method returns exceptionally, `null` (or the default type for primitive types, like `0` for `int`) is provided. `@Returned` parameters are only allowed in `@After` methods, not in `@Before` methods.
-* `@Thrown`: This is like `@Returned`, but to learn an Exception thrown out of an instrumented method. The type should be `Throwable` to avoid class cast errors on unexpected `RuntimeException` or `Error`. If the instrumented method does not throw an exception, the parameter annotated with `@Thrown` will be `null`.
+* `@Thrown`: The `@Thrown` annotation is like `@Returned`, but to learn an Exception thrown from an instrumented method. The type should be `Throwable` to avoid class cast errors on unexpected RuntimeExceptions or Errors. If the instrumented method does not throw an exception, the parameter annotated with `@Thrown` will be `null`.
 
 ### Using Labels
 
