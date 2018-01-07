@@ -43,8 +43,8 @@ public class JdbcHook {
 
         sqlQueriesTotal = metricsStore.createOrGet(new MetricDef<>(
                 "sql_queries_total",
-                registry -> Counter.build()
-                        .name("sql_queries_total")
+                (name, registry) -> Counter.build()
+                        .name(name)
                         .labelNames("method", "path", "query")
                         .help("Total number of sql queries.")
                         .register(registry)
@@ -52,11 +52,11 @@ public class JdbcHook {
 
         sqlQueriesDuration = metricsStore.createOrGet(new MetricDef<>(
                 "sql_query_duration",
-                registry -> Summary.build()
+                (name, registry) -> Summary.build()
                         .quantile(0.5, 0.05)   // Add 50th percentile (= median) with 5% tolerated error
                         .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
                         .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
-                        .name("sql_query_duration")
+                        .name(name)
                         .labelNames("method", "path", "query")
                         .help("Duration for serving the sql queries in seconds.")
                         .register(registry)

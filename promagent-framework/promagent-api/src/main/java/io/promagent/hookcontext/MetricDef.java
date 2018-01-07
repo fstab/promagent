@@ -17,14 +17,15 @@ package io.promagent.hookcontext;
 import io.prometheus.client.Collector;
 import io.prometheus.client.CollectorRegistry;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class MetricDef<T extends Collector> {
 
     private final String metricName;
-    private final Function<CollectorRegistry, T> producer;
+    private final BiFunction<String, CollectorRegistry, T> producer;
 
-    public MetricDef(String metricName, Function<CollectorRegistry, T> producer) {
+    public MetricDef(String metricName, BiFunction<String, CollectorRegistry, T> producer) {
         this.metricName = metricName;
         this.producer = producer;
     }
@@ -33,7 +34,7 @@ public class MetricDef<T extends Collector> {
         return metricName;
     }
 
-    Function<CollectorRegistry, T> getProducer() {
+    BiFunction<String, CollectorRegistry, T> getProducer() {
         return producer;
     }
 }

@@ -46,8 +46,8 @@ public class ServletHook {
 
         httpRequestsTotal = metricsStore.createOrGet(new MetricDef<>(
                 "http_requests_total",
-                registry -> Counter.build()
-                        .name("http_requests_total")
+                (name, registry) -> Counter.build()
+                        .name(name)
                         .labelNames("method", "path", "status")
                         .help("Total number of http requests.")
                         .register(registry)
@@ -55,11 +55,11 @@ public class ServletHook {
 
         httpRequestsDuration = metricsStore.createOrGet(new MetricDef<>(
                 "http_request_duration",
-                registry -> Summary.build()
+                (name, registry) -> Summary.build()
                         .quantile(0.5, 0.05)   // Add 50th percentile (= median) with 5% tolerated error
                         .quantile(0.9, 0.01)   // Add 90th percentile with 1% tolerated error
                         .quantile(0.99, 0.001) // Add 99th percentile with 0.1% tolerated error
-                        .name("http_request_duration")
+                        .name(name)
                         .labelNames("method", "path", "status")
                         .help("Duration for serving the http requests in seconds.")
                         .register(registry)

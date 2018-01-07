@@ -49,6 +49,6 @@ public class MetricsStore {
 
     @SuppressWarnings("unchecked")
     public <T extends Collector> T createOrGet(MetricDef<T> metricDef) {
-        return (T) metrics.computeIfAbsent(metricDef.getMetricName(), s -> metricDef.getProducer().apply(registry));
+        return (T) metrics.computeIfAbsent(metricDef.getMetricName(), s -> metricDef.getProducer().apply(metricDef.getMetricName(), registry));
     }
 }
