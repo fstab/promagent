@@ -3,7 +3,7 @@
 
     <parent>
         <groupId>io.promagent</groupId>
-        <artifactId>promagent</artifactId>
+        <artifactId>promagent-framework</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
 

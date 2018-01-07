@@ -3,11 +3,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.promagent</groupId>
-    <artifactId>promagent</artifactId>
+    <artifactId>promagent-framework</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
-    <name>promagent parent</name>
+    <name>promagent framework</name>
 
     <licenses>
         <license>
