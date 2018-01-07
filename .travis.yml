@@ -5,5 +5,6 @@ jdk:
 services:
   - docker
 script:
-  - mvn clean verify -Pwildfly
-  - mvn clean verify -Pspring
+  - mvn -f promagent-framework/pom.xml clean install
+  - mvn -f promagent-example/pom-with-docker-tests.xml clean verify -Pwildfly 
+  - mvn -f promagent-example/pom-with-docker-tests.xml clean verify -Pspring
