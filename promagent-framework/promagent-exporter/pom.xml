@@ -26,6 +26,6 @@
     </dependencies>
 
     <build>
-        <finalName>${project.parent.artifactId}</finalName>
+        <finalName>promagent</finalName>
     </build>
 </project>

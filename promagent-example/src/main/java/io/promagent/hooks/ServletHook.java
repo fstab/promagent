@@ -109,7 +109,6 @@ public class ServletHook {
     // Return Werte und Exceptions als Parameter
     @After(method = {"service", "doFilter"})
     public void after(ServletRequest request, ServletResponse response/*, @Returned int i, @Thrown Throwable t*/) throws Exception {
-        System.err.println("servlet after call number " + stackDepth + " on object " + this);
         stackDepth--;
         if (stackDepth > 0) {
             return; // recursive call

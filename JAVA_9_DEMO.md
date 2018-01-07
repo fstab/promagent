@@ -1,16 +1,36 @@
 Java 9
 ------
 
-The following is a Java 9 proof of concept. It shows how to run the [Wildfly Demo](README.md#wildfly-demo) with Wildfly 11 using JDK9.
+The following is a Java 9 proof of concept. It shows how to run the [Wildfly Demo](README.md) with Wildfly 11 using JDK9.
 
-Download and compile the [Promagent](https://github.com/fstab/promagent).
+## Downloading and Compiling the Example Agent
+
+The `promagent-example` is built the same way as described in [README.md](README.md):
+
+Clone [Promagent](https://github.com/fstab/promagent) from GitHub:
 
 ```bash
 git clone https://github.com/fstab/promagent.git
 cd promagent
-mvn clean package
+```
+
+The `promagent-api` and `promagent-maven-plugin` are not on Maven Central yet. Run the following commands to make them available locally (in `~/.m2/repository/`):
+
+```bash
+cd promagent-framework
+mvn clean install
 cd ..
 ```
+
+Compile the example agent. This should create the file `./promagent-example/target/promagent.jar`:
+
+```bash
+cd promagent-example
+mvn clean verify
+cd ..
+```
+
+## Running the Example with a Java EE Demo Application on Wildfly
 
 Download and unzip the [Wildfly Quickstart](https://github.com/wildfly/quickstart) applications.
 
