@@ -57,8 +57,8 @@ public class Promagent {
             agentBuilder.installOn(inst);
 
             // TODO -- the following is an experiment supporting collectors directly (in addition to hooks)
-            io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) classLoaderCache.currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
-            registry.registerNoJmx(jmxCollector);
+//            io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) classLoaderCache.currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
+//            registry.registerNoJmx(jmxCollector);
 
         } catch (Throwable t) {
             t.printStackTrace();

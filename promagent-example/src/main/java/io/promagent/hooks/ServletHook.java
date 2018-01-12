@@ -40,7 +40,6 @@ public class ServletHook {
     private final Counter httpRequestsTotal;
     private final Summary httpRequestsDuration;
     private long startTime = 0;
-    private int stackDepth = 0; // Will be > 0 if a servlet is called by another servlet, so we only count the outermost call.
 
     public ServletHook(MetricsStore metricsStore) {
 
@@ -94,10 +93,6 @@ public class ServletHook {
 
     @Before(method = {"service", "doFilter"})
     public void before(ServletRequest request, ServletResponse response) {
-        stackDepth++;
-        if (stackDepth > 1) {
-            return; // recursive call
-        }
         if (HttpServletRequest.class.isAssignableFrom(request.getClass()) && HttpServletResponse.class.isAssignableFrom(response.getClass())) {
             HttpServletRequest req = (HttpServletRequest) request;
             HttpContext.put(HTTP_METHOD, req.getMethod());
@@ -109,10 +104,6 @@ public class ServletHook {
     // Return Werte und Exceptions als Parameter
     @After(method = {"service", "doFilter"})
     public void after(ServletRequest request, ServletResponse response/*, @Returned int i, @Thrown Throwable t*/) throws Exception {
-        stackDepth--;
-        if (stackDepth > 0) {
-            return; // recursive call
-        }
         if (HttpServletRequest.class.isAssignableFrom(request.getClass()) && HttpServletResponse.class.isAssignableFrom(response.getClass())) {
             HttpServletResponse resp = (HttpServletResponse) response;
             try {

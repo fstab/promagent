@@ -20,13 +20,26 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * The @Hook annotation indicates that the annotated class implements instrumentation for a class or interface.
- * The "instruments" parameter is a list of classes or interfaces to be instrumented.
- * The annotated class should have methods annotated with @Before and @After that implement the actual instrumentation.
+ * The @Hook annotation indicates that the annotated class is a Hook.
+ * The parameter {@link Hook#instruments()} defines which classes or interfaces are instrumented by that Hook.
+ * The method annotations {@link Before} and {@link After} define which methods should be instrumented within that class or interface.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Hook {
+
+    /**
+     * List of classes or interfaces to be instrumented.
+     */
     String[] instruments();
-//    boolean skipNestedCalls() default true; // TODO: Support this so the hooks don't need to track the stackDepth manually.
+
+    /**
+     * If true, nested calls are skipped.
+     * Nested means that the instrumented method calls another method that is instrumented with the same hook.
+     * In most cases, you would only be interested in the outer call, so the default is {@code true}.
+     * If set to {@code false}, nested calls will also be instrumented.
+     * For nested calls, the same Hook instance is re-used.
+     * For outer calls, a new Hook instance is created.
+     */
+    boolean skipNestedCalls() default true;
 }

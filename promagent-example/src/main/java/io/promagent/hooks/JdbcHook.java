@@ -35,9 +35,7 @@ public class JdbcHook {
 
     private final Counter sqlQueriesTotal;
     private final Summary sqlQueriesDuration;
-    private String currentQuery;
     private long startTime = 0;
-    private int stackDepth = 0; // Will be > 0 if a jdbc method is called from another jdbc method, so we only count the outermost call.
 
     public JdbcHook(MetricsStore metricsStore) {
 
@@ -76,12 +74,7 @@ public class JdbcHook {
 
     @Before(method = {"execute", "executeQuery", "executeUpdate", "executeLargeUpdate", "prepareStatement", "prepareCall"})
     public void before(String sql) {
-        stackDepth++;
-        if (stackDepth > 1) {
-            return;
-        }
         startTime = System.nanoTime();
-        currentQuery = stripValues(sql);
     }
 
     @Before(method = {"execute", "executeUpdate", "executeLargeUpdate", "prepareStatement"})
@@ -113,14 +106,6 @@ public class JdbcHook {
 
     @After(method = {"execute", "executeQuery", "executeUpdate", "executeLargeUpdate", "prepareStatement", "prepareCall"})
     public void after(String sql) throws Exception {
-        if (!stripValues(sql).equals(currentQuery)) { // I don't think this can happen, but let's track it for a while to be sure.
-            System.err.println("Different queries in same JDBC call: '" + currentQuery + "', '" + stripValues(sql) + "'.");
-        }
-
-        stackDepth--;
-        if (stackDepth > 0) {
-            return; // recursive call
-        }
         double duration = ((double) System.nanoTime() - startTime) / (double) TimeUnit.SECONDS.toNanos(1L);
         String method = HttpContext.get(HTTP_METHOD).orElse("no http context");
         String path = HttpContext.get(HTTP_PATH).orElse("no http context");

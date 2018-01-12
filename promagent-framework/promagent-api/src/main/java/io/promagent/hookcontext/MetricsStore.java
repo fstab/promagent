@@ -19,24 +19,21 @@ import io.prometheus.client.CollectorRegistry;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiFunction;
 
 /**
- * Use the MetricsStore when creating metrics in Hooks to make sure these metrics are created only once.
- * <p/>
- * In regular Java applications, you can create Prometheus metrics as a static variable and call register(), like this:
+ * Instead of creating Prometheus Metrics directly, Hooks should use the {@link MetricsStore} like this:
  * <pre>
- *     private static final Counter httpRequestsTotal = Counter
- *             .build()
- *             .name("http_requests_total")
- *             .help("Total number of HTTP requests")
- *             .register();
+ * Counter httpRequestsTotal = metricsStore.createOrGet(new MetricDef<>(
+ *         "http_requests_total",
+ *         (name, registry) -> Counter.build()
+ *                 .name(name)
+ *                 .labelNames("method", "path", "status")
+ *                 .help("Total number of http requests.")
+ *                 .register(registry)
+ * ));
  * </pre>
- * This works because a static variable is equivalent to a globally unique variable in most applications.
- * <p/>
- * However, in promagent, Hook classes may be loaded multiple times in different class loaders.
- * Therefore, if you define a static variable in a Hook, there might be multiple instances of that variable.
- * <p/>
- * Use the MetricsStore to make sure that Prometheus metrics are created only once.
+ * The Promgent framework will take care that each metric is created only once and re-used across re-deployments in an application server.
  */
 public class MetricsStore {
 
@@ -47,6 +44,9 @@ public class MetricsStore {
         this.registry = registry;
     }
 
+    /**
+     * See {@link MetricsStore} and {@link MetricDef#MetricDef(String, BiFunction)}.
+     */
     @SuppressWarnings("unchecked")
     public <T extends Collector> T createOrGet(MetricDef<T> metricDef) {
         return (T) metrics.computeIfAbsent(metricDef.getMetricName(), s -> metricDef.getProducer().apply(metricDef.getMetricName(), registry));

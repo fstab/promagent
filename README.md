@@ -5,7 +5,7 @@ Promagent
 
 _Prometheus Monitoring for Java Web Applications without Modifying their Source Code._
 
-The `promagent-api` and `promagent-maven-plugin` are tools for creating custom Java agents for [Prometheus](https://prometheus.io/) monitoring.
+The `promagent-maven-plugin` is a tool for creating _custom Java agents_ for [Prometheus](https://prometheus.io/) monitoring.
 The Java agents instrument Java Web Applications with [Prometheus](https://prometheus.io/) metrics without modifying the applications' source code.
 The agents use the [Byte Buddy](http://bytebuddy.net/) bytecode manipulation library to insert Prometheus metrics during application startup.
 
@@ -191,19 +191,17 @@ With these two things included, `mvn clean package` should produce a working Jav
 
 ### A Hook's Life Cycle
 
-The Promagent framework creates a new Hook instance for each HTTP request. While this sounds simple, it's a bit tricky in the details, because multiple Servlet calls may be involved fulfilling a single HTTP request (one Servlet calling another Servlet). The exact mechanism is as follows:
+A Hook's lifecycle depends on whether the instrumented method call is a _nested_ call or not. A call is _nested_ when the method is called by another method that was instrumented with the same hook.
+This happens for example if a Servlet's service() method calls another Servlet's service() method.
 
-* When an instrumented method is called for the first time, a new Hook instance is created. The Hook instance is stored in a [ThreadLocal](https://docs.oracle.com/javase/8/docs/api/java/lang/ThreadLocal.html).
-* For nested calls within the same thread, the instance from the ThreadLocal is re-used.
-* When the outermost call is done (leaving the `@After` method of the outermost call), the Hook instance is removed from the ThreadLocal and discarded. For the next call, a new instance will be created.
+By default, _nested_ calls are ignored and the Hook is only invoked for the outer call.
+In the Servlet example, this is the intended behavior, because it guarantees that each HTTP request is counted only once, even even if a Servlet internally calls another Servlet to handle the request.
 
-The simple `ServletHook` above would count nested Servlet calls, the value of `servlet_requests_total` might be higher than the actual number of HTTP requests.
-The `ServletHook` in the `promagent-example` project prevents this by tracking the current stack depth, so the `http_requests_total` metric counts the actual number of HTTP requests.
-Future Promagent versions will provide a more flexible `@Hook` annotation so users can configure if the Hook should be invoked for nested calls or not.
+If the Hook is defined with `@Hook(skipNestedCalls = false)` the Hook will be invoked for all _nested_ calls, not only for the outer call.
 
-While this section uses HTTP servlets to explain the Hook life cycle, the same principle does also make sens for other scenarios, like JDBC queries.
+For each outer call, a new Hook instance is created. If the Hook implements both a `@Before` and an `@After` method, the same instance is used for `@Before` and `@After`. That way, you can set a start time as a member variable in the `@Before` method, and use it in the `@After` method to calculate the duration of the call.
 
-However, Promagent relies on Thread-based request processing and does currently not support reactive applications.
+For _nested_ calls, the Hook instance from the outer call is re-used. That way, you can put data into member variables in order to pass that data down the call stack.
 
 ### The Hook's Constructor Parameter
 
@@ -237,7 +235,7 @@ The Promagent library will take care that the `Counter` is created only once, an
 
 ### Hook Annotations
 
-* `@Hook`: Hook classes are annotated with `@Hook(instruments = {...})`. The `instruments` parameter takes a list of Strings specifying the names of the classes or interfaces to be instrumented, like `{"javax.servlet.Servlet", "javax.servlet.Filter"}`. The Hook instruments not only the classes or interfaces themselves, but all sub-classes or implementations of these classes or interfaces.
+* `@Hook`: Hook classes are annotated with `@Hook(instruments = {...}, skipNestedCalls = true)`. The `instruments` parameter takes a list of Strings specifying the names of the classes or interfaces to be instrumented, like `{"javax.servlet.Servlet", "javax.servlet.Filter"}`. The Hook instruments not only the classes or interfaces themselves, but all sub-classes or implementations of these classes or interfaces. The `skipNestedCalls` parameter is described in _A Hook's Life Cycle_ above.
 * `@Before`: Hook methods annotated with `@Before(method = {...})` are invoked when an instrumented method is entered. The `method` parameter takes a list of Strings specifying the names of the intercepted methods, like `{"service", "doFilter"}`. The number and types of arguments are derived from the method itself, i.e. the Hook method annotated with `@Before` must take the exact same parameters as the methods it wants to instrument.
 * `@After`: Hook methods annotated with `@After(method = {...})` are invoked when an instrumented method is left. `@After` methods are always called, even if the instrumented method terminates with an Exception. The semantics is the same as with the `@Before` annotation. Methods annotated with `@After` may have two additional parameters, one parameter annotated with `@Returned` and one parameter annotated with `@Thrown`. These parameters are ignored when determining the signature of the instrumented method.
 * `@Returned`: It might be useful to learn the return value of an instrumented method. In order to do so, methods annotated with `@After` may have an additional parameter annotated with `@Returned`, where the type corresponds to the return type of the intercepted method. If the instrumented method returns regularly, the return value is provided. If the method returns exceptionally, `null` (or the default type for primitive types, like `0` for `int`) is provided. `@Returned` parameters are only allowed in `@After` methods, not in `@Before` methods.

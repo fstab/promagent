@@ -89,8 +89,9 @@ public class Delegator {
         return hookMetadata.stream()
                 .filter(hook -> classOrInterfaceMatches(that.getClass(), hook))
                 .filter(hook -> methodNameAndNumArgsMatch(interceptedMethod, hook))
-                .map(hook -> createHookClass(hook))
+                .map(hook -> loadHookClass(hook))
                 .filter(hookClass -> argumentTypesMatch(hookClass, interceptedMethod))
+                .filter(hookClass -> ! shouldBeSkipped(hookClass))
                 .map(hookClass -> loadFromTheadLocalOrCreate(hookClass))
                 .collect(Collectors.toList());
     }
@@ -135,7 +136,7 @@ public class Delegator {
         return true;
     }
 
-    private Class<?> createHookClass(HookMetadata hook) {
+    private Class<?> loadHookClass(HookMetadata hook) {
         try {
             return classLoaderCache.currentClassLoader().loadClass(hook.getHookClassName());
         } catch (ClassNotFoundException e) {
@@ -198,6 +199,11 @@ public class Delegator {
             }
         }
         return result;
+    }
+
+    private boolean shouldBeSkipped(Class<?> hookClass) {
+        return hookClass.getAnnotation(io.promagent.annotations.Hook.class).skipNestedCalls()
+                && threadLocal.get().containsKey(hookClass);
     }
 
     private HookInstance loadFromTheadLocalOrCreate(Class<?> hookClass) {
