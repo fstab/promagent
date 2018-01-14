@@ -16,7 +16,7 @@ The Promagent code repository contains two projects:
   - HTTP: Number and duration of web requests.
   - SQL: Number and duration of database queries (including the HTTP context if the query was triggered by a REST call).
 
-The example agent was tested with [Spring Boot](https://projects.spring.io/spring-boot/) and with the [Wildfly application server](http://wildfly.org/).
+The example agent was tested with [Tomcat](http://tomcat.apache.org/) for the [Spring Boot](https://projects.spring.io/spring-boot/) example and with the [Wildfly application server](http://wildfly.org/) for the [Java EE](http://www.oracle.com/technetwork/java/javaee/tech/index.html) example.
 
 Example
 -------
