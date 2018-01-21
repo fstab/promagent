@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+// TODO -- the following is an experiment supporting collectors directly (in addition to hooks)
+// TODO -- This class is not loaded by default, see commented-out lines in io.promagent.internal.Promagent.premain()
 // See JmxCollector in jmx_exporter
 public class JmxCollector extends Collector implements Collector.Describable {
 
