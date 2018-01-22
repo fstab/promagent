@@ -93,17 +93,17 @@
                         <image>
                             <name>${project.artifactId}/oracle-jdk-8</name>
                             <build>
-                                <from>ubuntu:17.04</from>
+                                <from>ubuntu:17.10</from>
                                 <workdir>/opt</workdir>
                                 <runCmds>
                                     <run>apt-get update ; apt-get upgrade -y</run>
                                     <run>apt-get install -y curl git neovim sudo</run>
-                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u151-b12/e758a0de34e24606bca991d704f6dcbf/jdk-8u151-linux-x64.tar.gz</run>
-                                    <run>tar xfz jdk-8u151-linux-x64.tar.gz</run>
+                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u161-b12/2f38c3b165be4555a1fa6e98c45e0808/jdk-8u161-linux-x64.tar.gz</run>
+                                    <run>tar xfz jdk-8u161-linux-x64.tar.gz</run>
                                     <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.5.2/binaries/apache-maven-3.5.2-bin.tar.gz</run>
                                     <run>tar xfz apache-maven-3.5.2-bin.tar.gz</run>
                                     <run>
-                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_151"' >> /etc/profile.d/java.sh ; \
+                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_161"' >> /etc/profile.d/java.sh ; \
                                         echo 'export MAVEN_HOME="/opt/apache-maven-3.5.2"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$MAVEN_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ;
@@ -113,9 +113,9 @@
                                 </runCmds>
                                 <user>promagent</user>
                                 <env>
-                                    <JAVA_HOME>/opt/jdk1.8.0_151</JAVA_HOME>
+                                    <JAVA_HOME>/opt/jdk1.8.0_161</JAVA_HOME>
                                     <MAVEN_HOME>/opt/apache-maven-3.5.2</MAVEN_HOME>
-                                    <PATH>/opt/jdk1.8.0_151/bin:/opt/apache-maven-3.5.2/bin:$PATH</PATH>
+                                    <PATH>/opt/jdk1.8.0_161/bin:/opt/apache-maven-3.5.2/bin:$PATH</PATH>
                                 </env>
                             </build>
                         </image>
@@ -186,7 +186,7 @@
                                 </ports>
                                 <wait>
                                     <log>WildFly Full 10.1.0.Final .WildFly Core 2.2.0.Final. started in [0-9]+ms</log>
-                                    <time>30000</time>
+                                    <time>60000</time>
                                 </wait>
                                 <cmd>./run.sh</cmd>
                                 <log>
