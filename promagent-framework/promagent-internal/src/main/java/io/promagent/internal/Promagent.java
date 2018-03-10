@@ -108,7 +108,6 @@ public class Promagent {
             ElementMatcher.Junction<MethodDescription> junction = ElementMatchers
                     .named(methodSignature.getMethodName())
                     .and(not(isAbstract()))
-                    .and(isPublic())
                     .and(takesArguments(methodSignature.getParameterTypes().size()));
             for (int i = 0; i < methodSignature.getParameterTypes().size(); i++) {
                 junction = junction.and(takesArgument(i, named(methodSignature.getParameterTypes().get(i))));
