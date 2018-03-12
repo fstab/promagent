@@ -58,7 +58,9 @@ public class SpringIT {
 
         String sqlQueriesTotal = Arrays.stream(metricsLines)
                 .filter(m -> m.contains("sql_queries_total"))
-                .filter(m -> m.contains("query=\"insert into person (id, first_name, last_name) values (...)\""))
+                // The following regular expression tests for this string, but allows the parameters 'id', 'fist_name', 'last_name' to change order:
+                // query="insert into person (first_name, last_name, id)"
+                .filter(m -> m.matches(".*query=\"insert into person \\((?=.*id)(?=.*first_name)(?=.*last_name).*\\) values \\(...\\)\".*"))
                 .filter(m -> m.contains("method=\"POST\""))
                 .filter(m -> m.contains("path=\"/people\""))
                 .findFirst().orElseThrow(() -> new Exception("sql_queries_total metric not found."));
