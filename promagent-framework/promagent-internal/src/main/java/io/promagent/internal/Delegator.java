@@ -55,12 +55,12 @@ public class Delegator {
     /**
      * Should be called from the Advice's @OnMethodEnter method. Returns the list of Hooks to be passed on to after()
      */
-    public static List<HookInstance> before(Object that, Method interceptedMethod, Object[] args) {
-        return instance.doBefore(that, interceptedMethod, args);
+    public static List<HookInstance> before(Class<?> interceptedClass, Method interceptedMethod, Object[] args) {
+        return instance.doBefore(interceptedClass, interceptedMethod, args);
     }
 
-    private List<HookInstance> doBefore(Object that, Method interceptedMethod, Object[] args) {
-        List<HookInstance> hookInstances = loadFromThreadLocalOrCreate(that, interceptedMethod);
+    private List<HookInstance> doBefore(Class<?> interceptedClass, Method interceptedMethod, Object[] args) {
+        List<HookInstance> hookInstances = loadFromThreadLocalOrCreate(interceptedClass, interceptedMethod);
         for (HookInstance hookInstance : hookInstances) {
             invokeBefore(hookInstance.getInstance(), interceptedMethod, args);
         }
@@ -85,9 +85,9 @@ public class Delegator {
         }
     }
 
-    private List<HookInstance> loadFromThreadLocalOrCreate(Object that, Method interceptedMethod) {
+    private List<HookInstance> loadFromThreadLocalOrCreate(Class<?> interceptedClass, Method interceptedMethod) {
         return hookMetadata.stream()
-                .filter(hook -> classOrInterfaceMatches(that.getClass(), hook))
+                .filter(hook -> classOrInterfaceMatches(interceptedClass, hook))
                 .filter(hook -> methodNameAndNumArgsMatch(interceptedMethod, hook))
                 .map(hook -> loadHookClass(hook))
                 .filter(hookClass -> argumentTypesMatch(hookClass, interceptedMethod))

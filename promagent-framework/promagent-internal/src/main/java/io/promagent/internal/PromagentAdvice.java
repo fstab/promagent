@@ -31,20 +31,22 @@ public class PromagentAdvice {
     @OnMethodEnter
     @SuppressWarnings("unchecked")
     public static List<Object> before(
-            @This Object that,
+            @This(optional = true) Object that,
             @Origin Method method,
             @AllArguments Object[] args
     ) {
+        // that is null when instrumenting static methods.
+        Class<?> clazz = that != null ? that.getClass() : method.getDeclaringClass();
         try {
             // The following code is equivalent to:
             //     return Delegator.before(that, method, args);
             // However, the Delegator class will not be available in the context of the instrumented method,
             // so we must use our agent class loader to load the Delegator class and do the call via reflection.
             Class<?> delegator = ClassLoaderCache.getInstance().currentClassLoader().loadClass("io.promagent.internal.Delegator");
-            Method beforeMethod = delegator.getMethod("before", Object.class, Method.class, Object[].class);
-            return (List<Object>) beforeMethod.invoke(null, that, method, args);
+            Method beforeMethod = delegator.getMethod("before", Class.class, Method.class, Object[].class);
+            return (List<Object>) beforeMethod.invoke(null, clazz, method, args);
         } catch (Exception e) {
-            System.err.println("Error executing Prometheus hook on " + that.getClass().getSimpleName());
+            System.err.println("Error executing Prometheus hook on " + clazz.getSimpleName());
             e.printStackTrace();
             return null;
         }
@@ -53,7 +55,7 @@ public class PromagentAdvice {
     @OnMethodExit(onThrowable = Throwable.class)
     public static void after(
             @Enter List<Object> hooks,
-            @This Object that,
+            @This(optional = true) Object that,
             @Origin Method method,
             @AllArguments Object[] args,
             @Return(typing = Assigner.Typing.DYNAMIC) Object returned, // support void == null and int == Integer
@@ -68,7 +70,8 @@ public class PromagentAdvice {
             Method afterMethod = delegator.getMethod("after", List.class, Method.class, Object[].class, Object.class, Throwable.class);
             afterMethod.invoke(null, hooks, method, args, returned, thrown);
         } catch (Exception e) {
-            System.err.println("Error executing Prometheus hook on " + that.getClass().getSimpleName());
+            Class<?> clazz = that != null ? that.getClass() : method.getDeclaringClass();
+            System.err.println("Error executing Prometheus hook on " + clazz.getSimpleName());
             e.printStackTrace();
         }
     }
