@@ -98,13 +98,13 @@
                                 <runCmds>
                                     <run>apt-get update ; apt-get upgrade -y</run>
                                     <run>apt-get install -y curl git neovim sudo</run>
-                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u161-b12/2f38c3b165be4555a1fa6e98c45e0808/jdk-8u161-linux-x64.tar.gz</run>
-                                    <run>tar xfz jdk-8u161-linux-x64.tar.gz</run>
-                                    <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.5.2/binaries/apache-maven-3.5.2-bin.tar.gz</run>
-                                    <run>tar xfz apache-maven-3.5.2-bin.tar.gz</run>
+                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u171-b11/512cd62ec5174c3487ac17c61aaa89e8/jdk-8u171-linux-x64.tar.gz</run>
+                                    <run>tar xfz jdk-8u171-linux-x64.tar.gz</run>
+                                    <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.5.3/binaries/apache-maven-3.5.3-bin.tar.gz</run>
+                                    <run>tar xfz apache-maven-3.5.3-bin.tar.gz</run>
                                     <run>
-                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_161"' >> /etc/profile.d/java.sh ; \
-                                        echo 'export MAVEN_HOME="/opt/apache-maven-3.5.2"' >> /etc/profile.d/java.sh ; \
+                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_171"' >> /etc/profile.d/java.sh ; \
+                                        echo 'export MAVEN_HOME="/opt/apache-maven-3.5.3"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$MAVEN_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ;
                                     </run>
@@ -113,9 +113,9 @@
                                 </runCmds>
                                 <user>promagent</user>
                                 <env>
-                                    <JAVA_HOME>/opt/jdk1.8.0_161</JAVA_HOME>
-                                    <MAVEN_HOME>/opt/apache-maven-3.5.2</MAVEN_HOME>
-                                    <PATH>/opt/jdk1.8.0_161/bin:/opt/apache-maven-3.5.2/bin:$PATH</PATH>
+                                    <JAVA_HOME>/opt/jdk1.8.0_171</JAVA_HOME>
+                                    <MAVEN_HOME>/opt/apache-maven-3.5.3</MAVEN_HOME>
+                                    <PATH>/opt/jdk1.8.0_171/bin:/opt/apache-maven-3.5.3/bin:$PATH</PATH>
                                 </env>
                             </build>
                         </image>
