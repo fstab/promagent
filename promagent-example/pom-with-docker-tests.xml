@@ -32,7 +32,7 @@
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
-            <version>3.1.0</version>
+            <version>4.0.1</version>
             <scope>provided</scope><!-- provided by the Servlet container -->
         </dependency>
 
@@ -40,14 +40,14 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>5.0.0-RC2</version>
+            <version>5.3.1</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>com.squareup.okhttp</groupId>
+            <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
-            <version>2.7.5</version>
+            <version>3.11.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -60,7 +60,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>2.20</version>
+                    <version>2.22.1</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -84,7 +84,7 @@
             <plugin>
                 <groupId>io.fabric8</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
-                <version>0.21.0</version>
+                <version>0.27.2</version>
                 <configuration>
                     <verbose>true</verbose><!-- print build steps to stdout -->
                     <images>
@@ -98,13 +98,13 @@
                                 <runCmds>
                                     <run>apt-get update ; apt-get upgrade -y</run>
                                     <run>apt-get install -y curl git neovim sudo</run>
-                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u171-b11/512cd62ec5174c3487ac17c61aaa89e8/jdk-8u171-linux-x64.tar.gz</run>
-                                    <run>tar xfz jdk-8u171-linux-x64.tar.gz</run>
-                                    <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.5.3/binaries/apache-maven-3.5.3-bin.tar.gz</run>
-                                    <run>tar xfz apache-maven-3.5.3-bin.tar.gz</run>
+                                    <run>curl --silent --location --cookie "oraclelicense=accept-securebackup-cookie" -O http://download.oracle.com/otn-pub/java/jdk/8u192-b12/750e1c8617c5452694857ad95c3ee230/jdk-8u192-linux-x64.tar.gz</run>
+                                    <run>tar xfz jdk-8u192-linux-x64.tar.gz</run>
+                                    <run>curl --silent -O http://ftp.fau.de/apache/maven/maven-3/3.6.0/binaries/apache-maven-3.6.0-bin.tar.gz</run>
+                                    <run>tar xfz apache-maven-3.6.0-bin.tar.gz</run>
                                     <run>
-                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_171"' >> /etc/profile.d/java.sh ; \
-                                        echo 'export MAVEN_HOME="/opt/apache-maven-3.5.3"' >> /etc/profile.d/java.sh ; \
+                                        echo 'export JAVA_HOME="/opt/jdk1.8.0_192"' >> /etc/profile.d/java.sh ; \
+                                        echo 'export MAVEN_HOME="/opt/apache-maven-3.6.0"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ; \
                                         echo 'export PATH="$MAVEN_HOME/bin:$PATH"' >> /etc/profile.d/java.sh ;
                                     </run>
@@ -113,9 +113,9 @@
                                 </runCmds>
                                 <user>promagent</user>
                                 <env>
-                                    <JAVA_HOME>/opt/jdk1.8.0_171</JAVA_HOME>
-                                    <MAVEN_HOME>/opt/apache-maven-3.5.3</MAVEN_HOME>
-                                    <PATH>/opt/jdk1.8.0_171/bin:/opt/apache-maven-3.5.3/bin:$PATH</PATH>
+                                    <JAVA_HOME>/opt/jdk1.8.0_192</JAVA_HOME>
+                                    <MAVEN_HOME>/opt/apache-maven-3.6.0</MAVEN_HOME>
+                                    <PATH>/opt/jdk1.8.0_192/bin:/opt/apache-maven-3.6.0/bin:$PATH</PATH>
                                 </env>
                             </build>
                         </image>
