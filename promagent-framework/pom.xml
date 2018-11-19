@@ -29,6 +29,7 @@
         <module>promagent-api</module>
         <module>promagent-internal</module>
         <module>promagent-exporter</module>
+        <!-- <module>promagent-loader</module> --> <!-- commented out, because it is optional and only compiles with tools.jar -->
         <module>promagent-maven-plugin</module>
     </modules>
 

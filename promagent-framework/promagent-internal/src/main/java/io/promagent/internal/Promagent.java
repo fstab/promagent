@@ -14,6 +14,24 @@
 
 package io.promagent.internal;
 
+import static net.bytebuddy.matcher.ElementMatchers.isAbstract;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.not;
+import static net.bytebuddy.matcher.ElementMatchers.takesArgument;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+
+import javax.management.ObjectName;
+import java.lang.instrument.Instrumentation;
+import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
+
 import io.promagent.agent.ClassLoaderCache;
 import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.HookMetadata.MethodSignature;
@@ -23,14 +41,6 @@ import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
-
-import javax.management.ObjectName;
-import java.lang.instrument.Instrumentation;
-import java.lang.management.ManagementFactory;
-import java.nio.file.Path;
-import java.util.*;
-
-import static net.bytebuddy.matcher.ElementMatchers.*;
 
 public class Promagent {
 
@@ -49,17 +59,18 @@ public class Promagent {
             Delegator.init(hookMetadata, metricsStore, classLoaderCache);
             printHookMetadata(hookMetadata);
 
-            AgentBuilder agentBuilder = new AgentBuilder.Default()
-                    .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
-                    .with(AgentBuilder.TypeStrategy.Default.REDEFINE);
-                    // .with(AgentBuilder.Listener.StreamWriting.toSystemError()); // use this to see exceptions thrown in instrumented code
+            AgentBuilder agentBuilder = new AgentBuilder.Default();
             agentBuilder = applyHooks(agentBuilder, hookMetadata, classLoaderCache);
-            agentBuilder.installOn(inst);
+            agentBuilder
+                    .disableClassFormatChanges()
+                    // .with(AgentBuilder.Listener.StreamWriting.toSystemError()) // use this to see exceptions thrown in instrumented code
+                    .with(AgentBuilder.RedefinitionStrategy.REDEFINITION)
+                    .with(AgentBuilder.TypeStrategy.Default.REDEFINE)
+                    .installOn(inst);
 
             // TODO -- the following is an experiment supporting collectors directly (in addition to hooks)
-//            io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) classLoaderCache.currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
-//            registry.registerNoJmx(jmxCollector);
-
+            // io.prometheus.client.Collector jmxCollector = (io.prometheus.client.Collector) classLoaderCache.currentClassLoader().loadClass("io.promagent.collectors.JmxCollector").newInstance();
+            // registry.registerNoJmx(jmxCollector);
         } catch (Throwable t) {
             t.printStackTrace();
         }
