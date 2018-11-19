@@ -24,14 +24,35 @@
         <junit5.version>5.3.1</junit5.version>
     </properties>
 
-    <modules>
-        <module>promagent-agent</module>
-        <module>promagent-api</module>
-        <module>promagent-internal</module>
-        <module>promagent-exporter</module>
-        <!-- <module>promagent-loader</module> --> <!-- commented out, because it is optional and only compiles with tools.jar -->
-        <module>promagent-maven-plugin</module>
-    </modules>
+    <profiles>
+
+        <profile>
+            <id>promagent-loader</id>
+            <modules>
+                <module>promagent-agent</module>
+                <module>promagent-api</module>
+                <module>promagent-internal</module>
+                <module>promagent-exporter</module>
+                <module>promagent-loader</module> <!-- this is only in the promagent-loader profile -->
+                <module>promagent-maven-plugin</module>
+            </modules>
+        </profile>
+
+        <profile>
+            <id>default</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <modules>
+                <module>promagent-agent</module>
+                <module>promagent-api</module>
+                <module>promagent-internal</module>
+                <module>promagent-exporter</module>
+                <module>promagent-maven-plugin</module>
+            </modules>
+        </profile>
+
+    </profiles>
 
     <dependencyManagement>
         <dependencies>
