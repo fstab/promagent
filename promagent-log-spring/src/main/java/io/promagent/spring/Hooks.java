@@ -11,7 +11,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Hooks {
-    private Map<String, List<String>> annotationMethodHook;
-    private Map<String, List<String>> annotationClassHook;
+    private Map<String, List<String>> annMethodHook;
+    private Map<String, List<String>> annClassHook;
     private Map<String, List<String>> regHooks;
 }

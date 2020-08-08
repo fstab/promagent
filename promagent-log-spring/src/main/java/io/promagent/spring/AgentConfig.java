@@ -29,15 +29,12 @@ public class AgentConfig {
     private String artifactId = "promagent-log";
     private String metadataXml = "maven-metadata.xml";
 
-//    @Value("${promagent.mvm.metadataUrl:http://10.129.132.55:8081/artifactory/libs-snapshot-local}")
     private String metadataUrl;
     private String metadataVersionUrl;
     private String remoteDownloadUrl;
 
-    @Value("${promagent.mvm.auth.name:lijingdong}")
     private String mvmName;
 
-    @Value("${promagent.mvm.auth.pass:123456}")
     private String mvmPass;
 
     @Value("${promagent.agent.skip:false}")
@@ -156,13 +153,13 @@ public class AgentConfig {
         System.setProperty("agent.headers", JSONObject.toJSONString(this.headers));
         System.setProperty("agent.userMap", this.userMap);
 
-        if (!CollectionUtils.isEmpty(this.hooks.getAnnotationMethodHook())) {
-            System.setProperty("agent.hooks.annMetHook", JSONObject.toJSONString(this.hooks.getAnnotationMethodHook()));
-            System.setProperty("agent.hooks.annMetType", JSONObject.toJSONString(HooksUtils.getAnnotationMethodType(hooks)));
+        if (!CollectionUtils.isEmpty(this.hooks.getAnnMethodHook())) {
+            System.setProperty("agent.hooks.annMetHook", JSONObject.toJSONString(this.hooks.getAnnMethodHook()));
+            System.setProperty("agent.hooks.annMetType", JSONObject.toJSONString(HooksUtils.getAnnMethodType(hooks)));
         }
-        if (!CollectionUtils.isEmpty(this.hooks.getAnnotationClassHook())) {
-            System.setProperty("agent.hooks.annClassHook", JSONObject.toJSONString(this.hooks.getAnnotationClassHook()));
-            System.setProperty("agent.hooks.annClassType", JSONObject.toJSONString(HooksUtils.getAnnotationClassType(hooks)));
+        if (!CollectionUtils.isEmpty(this.hooks.getAnnMethodHook())) {
+            System.setProperty("agent.hooks.annClassHook", JSONObject.toJSONString(this.hooks.getAnnMethodHook()));
+            System.setProperty("agent.hooks.annClassType", JSONObject.toJSONString(HooksUtils.getAnnClassType(hooks)));
         }
         if (!CollectionUtils.isEmpty(this.hooks.getRegHooks())) {
             System.setProperty("agent.hooks.regHooks", JSONObject.toJSONString(this.hooks.getRegHooks()));

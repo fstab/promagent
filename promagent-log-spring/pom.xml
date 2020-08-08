@@ -17,6 +17,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <promagent.framework.version>1.0-SNAPSHOT</promagent.framework.version>
+        <github.global.server>github</github.global.server>
     </properties>
 
     <dependencies>
@@ -82,30 +83,33 @@
         </dependency>
     </dependencies>
 
-    <plugin>
-        <groupId>com.github.github</groupId>
-        <artifactId>site-maven-plugin</artifactId>
-        <version >0.12</version>
-        <configuration>
-            <message >Maven artifacts for ${project.version}</message>
-            <noJekyll>true</noJekyll>
-            <outputDirectory>${project.build.directory}/mvn-repo</outputDirectory><!--本地jar地址-->
-            <branch>refs/heads/master</branch><!--分支的名称-->
-            <merge>true</merge>
-            <includes>
-                <include>**/*</include>
-            </includes>
-            <repositoryName>mvn-repo</repositoryName><!--对应github上创建的仓库名称 name-->
-            <repositoryOwner>sxjlinux</repositoryOwner><!--github 仓库所有者即登录用户名-->
-        </configuration>
-        <executions>
-            <execution>
-                <goals>
-                    <goal>site</goal>
-                </goals>
-                <phase>deploy</phase>
-            </execution>
-        </executions>
-    </plugin>
-
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.github.github</groupId>
+                <artifactId>site-maven-plugin</artifactId>
+                <version>0.12</version>
+                <configuration>
+                    <message>Maven artifacts for ${project.version}</message>
+                    <noJekyll>true</noJekyll>
+                    <outputDirectory>${project.build.directory}/mvn-repo</outputDirectory><!--本地jar地址-->
+                    <branch>refs/heads/master</branch><!--分支的名称-->
+                    <merge>true</merge>
+                    <includes>
+                        <include>**/*</include>
+                    </includes>
+                    <repositoryName>promagent/promagent-log-spring</repositoryName><!--对应github上创建的仓库名称 name-->
+                    <repositoryOwner>javazhangyi@163.com</repositoryOwner><!--github 仓库所有者即登录用户名-->
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>site</goal>
+                        </goals>
+                        <phase>deploy</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

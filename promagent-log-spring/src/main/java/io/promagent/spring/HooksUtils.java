@@ -20,15 +20,15 @@ public class HooksUtils {
         return regType;
     }
 
-    public static Map<String, String> getAnnotationMethodType(Hooks hooks) {
-        return getAnnotationType(hooks.getAnnotationMethodHook());
+    public static Map<String, String> getAnnMethodType(Hooks hooks) {
+        return getAnnType(hooks.getAnnMethodHook());
     }
 
-    public static Map<String, String> getAnnotationClassType(Hooks hooks) {
-        return getAnnotationType(hooks.getAnnotationClassHook());
+    public static Map<String, String> getAnnClassType(Hooks hooks) {
+        return getAnnType(hooks.getAnnClassHook());
     }
 
-    private static Map<String, String> getAnnotationType(Map<String, List<String>> annotationTypeHooks) {
+    private static Map<String, String> getAnnType(Map<String, List<String>> annotationTypeHooks) {
         if (CollectionUtils.isEmpty(annotationTypeHooks)) {
             return null;
         }
