@@ -4,8 +4,8 @@
   <artifactId>promagent-log-spring</artifactId>
   <versioning>
     <versions>
-      <version>1.0-SNAPSHOT</version>
+      <version>2.0-SNAPSHOT</version>
     </versions>
-    <lastUpdated>20200808135328</lastUpdated>
+    <lastUpdated>20200809052448</lastUpdated>
   </versioning>
 </metadata>
