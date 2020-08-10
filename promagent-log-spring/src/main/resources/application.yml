@@ -1,0 +1,5 @@
+
+promagent:
+  agent:
+    appName: appName
+    appEvn: dev

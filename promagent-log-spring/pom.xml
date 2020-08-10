@@ -4,7 +4,7 @@
 
     <groupId>io.promagent</groupId>
     <artifactId>promagent-log-spring</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>2.0-SNAPSHOT</version>
 
     <name>promagent-log-spring</name>
 
@@ -75,7 +75,6 @@
             <version>1.25</version>
         </dependency>
 
-
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
@@ -85,12 +84,22 @@
 
     <build>
         <plugins>
+
+
+            <plugin>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.8.2</version>
+                <configuration>
+                    <altDeploymentRepository>internal.repo::default::file://${project.build.directory}/mvn-repo</altDeploymentRepository>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>com.github.github</groupId>
                 <artifactId>site-maven-plugin</artifactId>
                 <version>0.12</version>
                 <configuration>
-                    <message>Maven artifacts for ${project.version}</message>
+                    <message >Maven artifacts for ${project.version}</message>
                     <noJekyll>true</noJekyll>
                     <outputDirectory>${project.build.directory}/mvn-repo</outputDirectory><!--本地jar地址-->
                     <branch>refs/heads/master</branch><!--分支的名称-->
@@ -98,8 +107,8 @@
                     <includes>
                         <include>**/*</include>
                     </includes>
-                    <repositoryName>promagent/promagent-log-spring</repositoryName><!--对应github上创建的仓库名称 name-->
-                    <repositoryOwner>javazhangyi@163.com</repositoryOwner><!--github 仓库所有者即登录用户名-->
+                    <repositoryName>promagent</repositoryName><!--对应github上创建的仓库名称 name-->
+                    <repositoryOwner>javazhangyi</repositoryOwner><!--github 仓库所有者即登录用户名-->
                 </configuration>
                 <executions>
                     <execution>
@@ -110,6 +119,8 @@
                     </execution>
                 </executions>
             </plugin>
+
+
         </plugins>
     </build>
 </project>

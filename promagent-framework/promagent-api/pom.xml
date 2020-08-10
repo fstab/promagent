@@ -12,10 +12,10 @@
 
     <packaging>jar</packaging>
 
-    <dependencies>
-        <dependency>
-            <groupId>io.prometheus</groupId>
-            <artifactId>simpleclient_common</artifactId>
-        </dependency>
-    </dependencies>
+    <!--<dependencies>-->
+        <!--<dependency>-->
+            <!--<groupId>io.prometheus</groupId>-->
+            <!--<artifactId>simpleclient_common</artifactId>-->
+        <!--</dependency>-->
+    <!--</dependencies>-->
 </project>

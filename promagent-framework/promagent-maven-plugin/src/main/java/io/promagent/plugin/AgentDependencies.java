@@ -64,8 +64,8 @@ class AgentDependencies {
                 new ExpectedDependency(pluginGroupId, "promagent-agent"),
                 new ExpectedDependency(pluginGroupId, "promagent-internal"),
                 new ExpectedDependency(pluginGroupId, "promagent-api"),
-                new ExpectedDependency("io.prometheus", "simpleclient_common"),
-                new ExpectedDependency("io.prometheus", "simpleclient"),
+//                new ExpectedDependency("io.prometheus", "simpleclient_common"),
+//                new ExpectedDependency("io.prometheus", "simpleclient"),
                 new ExpectedDependency("net.bytebuddy", "byte-buddy"),
                 new ExpectedDependency("commons-io", "commons-io")
         );
