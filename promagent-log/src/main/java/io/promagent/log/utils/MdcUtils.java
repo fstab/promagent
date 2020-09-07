@@ -1,6 +1,5 @@
 package io.promagent.log.utils;
 
-
 import io.promagent.log.config.LogConfig;
 import io.promagent.log.config.LogConstants;
 import org.slf4j.MDC;
@@ -19,13 +18,13 @@ public class MdcUtils {
     }
 
     public static String getLogId() {
-        String accessId = MDC.get(LogConstants.mdc_logId);
-        if (StringUtils.isEmpty(accessId)) {
-            accessId = UUID.randomUUID().toString();
-            MDC.put(LogConstants.mdc_logId, accessId);
-            return accessId;
+        String logId = MDC.get(LogConstants.mdc_logId);
+        if (StringUtils.isEmpty(logId)) {
+            logId = UUID.randomUUID().toString();
+            MDC.put(LogConstants.mdc_logId, logId);
+            return logId;
         }
-        return accessId;
+        return logId;
     }
 
     public static String getPspanId() {

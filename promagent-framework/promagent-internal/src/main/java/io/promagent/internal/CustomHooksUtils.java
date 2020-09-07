@@ -1,6 +1,5 @@
 package io.promagent.internal;
 
-
 import com.alibaba.fastjson.JSON;
 import io.promagent.agent.ClassLoaderCache;
 import net.bytebuddy.agent.builder.AgentBuilder;
@@ -28,37 +27,35 @@ public class CustomHooksUtils {
         if (Boolean.valueOf(System.getProperty("agent.debug"))) {
             agentBuilder = agentBuilder.with(AgentBuilder.Listener.StreamWriting.toSystemError());
         }
-        agentBuilder = applyAnnotationMethodHooks(agentBuilder, classLoaderCache);
-        agentBuilder = applyAnnotationClassesHooks(agentBuilder, classLoaderCache);
-        agentBuilder = applyRegHooks(agentBuilder, classLoaderCache);
+        agentBuilder = applyAnnMethodHook(agentBuilder, classLoaderCache);
+        agentBuilder = applyAnnClassHook(agentBuilder, classLoaderCache);
+        agentBuilder = applyRegHook(agentBuilder, classLoaderCache);
         return agentBuilder;
     }
 
-    private static AgentBuilder applyAnnotationMethodHooks(AgentBuilder agentBuilder, ClassLoaderCache classLoaderCache) {
-        String annotationMethodHook = System.getProperty("agent.hooks.annMethodHook");
-        if (annotationMethodHook == null) {
+    private static AgentBuilder applyAnnMethodHook(AgentBuilder agentBuilder, ClassLoaderCache classLoaderCache) {
+        String annMethodHook = System.getProperty("agent.hooks.annMethodHook");
+        if (annMethodHook == null) {
             return agentBuilder;
         }
-        Map<String, List<String>> annotationMethodHookMap = JSON.parseObject(annotationMethodHook, Map.class);
-
-        for (Map.Entry<String, List<String>> entry : annotationMethodHookMap.entrySet()) {
+        Map<String, List<String>> annMethodHookMap = JSON.parseObject(annMethodHook, Map.class);
+        for (Map.Entry<String, List<String>> entry : annMethodHookMap.entrySet()) {
             for (String value : entry.getValue()) {
                 agentBuilder = agentBuilder
                         .type(nameMatches(entry.getKey()))
-                        .transform(getForAdvice(classLoaderCache)
-                                .advice(ElementMatchers.isAnnotatedWith(ElementMatchers.named(value.split(":")[0])), CustomPromagentAdvice.class.getName()));
+                        .transform(getForAdvice(classLoaderCache).advice(ElementMatchers.isAnnotatedWith(ElementMatchers.named(value.split(":")[0])), CustomPromagentAdvice.class.getName()));
             }
         }
         return agentBuilder;
     }
 
-    private static AgentBuilder applyAnnotationClassesHooks(AgentBuilder agentBuilder, ClassLoaderCache classLoaderCache) {
-        String annotationClassHook = System.getProperty("agent.hooks.annClassHook");
-        if (annotationClassHook == null) {
+    private static AgentBuilder applyAnnClassHook(AgentBuilder agentBuilder, ClassLoaderCache classLoaderCache) {
+        String annClassHook = System.getProperty("agent.hooks.annClassHook");
+        if (annClassHook == null) {
             return agentBuilder;
         }
-        Map<String, List<String>> annotationClassesHookMap = JSON.parseObject(annotationClassHook, Map.class);
-        for (Map.Entry<String, List<String>> entry : annotationClassesHookMap.entrySet()) {
+        Map<String, List<String>> annClassHookMap = JSON.parseObject(annClassHook, Map.class);
+        for (Map.Entry<String, List<String>> entry : annClassHookMap.entrySet()) {
             for (String value : entry.getValue()) {
                 agentBuilder = agentBuilder
                         .type(ElementMatchers.isAnnotatedWith(ElementMatchers.named(value.split(":")[0])))
@@ -69,12 +66,12 @@ public class CustomHooksUtils {
         return agentBuilder;
     }
 
-    private static AgentBuilder applyRegHooks(AgentBuilder agentBuilder, ClassLoaderCache classLoaderCache) {
-        String regHooks = System.getProperty("agent.hooks.regHook");
-        if (regHooks == null) {
+    private static AgentBuilder applyRegHook(AgentBuilder agentBuilder, ClassLoaderCache classLoaderCache) {
+        String regHook = System.getProperty("agent.hooks.regHook");
+        if (regHook == null) {
             return agentBuilder;
         }
-        Map<String, List<String>> regHookMap = JSON.parseObject(regHooks, Map.class);
+        Map<String, List<String>> regHookMap = JSON.parseObject(regHook, Map.class);
         for (Map.Entry<String, List<String>> entry : regHookMap.entrySet()) {
             agentBuilder = agentBuilder
                     .type(ElementMatchers.nameMatches(entry.getKey().split(":")[0]))

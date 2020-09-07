@@ -1,7 +1,6 @@
 
 package io.promagent.log.hooks;
 
-
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Hook;
 import io.promagent.log.Logger;
@@ -27,7 +26,7 @@ public class HttpClientHook {
 
     private void addHeader(HttpMessage httpMessage) {
         try {
-            httpMessage.addHeader(LogConfig.REQUEST_ID, MdcUtils.getLogId());
+            httpMessage.addHeader(LogConfig.TRACE_ID, MdcUtils.getLogId());
         } catch (Throwable e) {
             Logger.error(e);
         }

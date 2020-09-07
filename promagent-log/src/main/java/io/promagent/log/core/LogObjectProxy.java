@@ -1,5 +1,6 @@
 package io.promagent.log.core;
 
+
 import io.promagent.log.config.TypeConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +35,9 @@ public class LogObjectProxy {
         logObject.setRequest(header, uri, params);
     }
 
-    public static void doLog(Long exec, Throwable thrown, Object ret, Method sig, Object[] args, String type) {
+    public static void doLog(Long exce, Throwable thrown, Object ret, Method sig, Object[] args, String type) {
         LogObject logObject = HttpContext.get();
-        logObject.setMethod(exec, thrown, ret, sig, args, type);
+        logObject.setMethod(exce, thrown, ret, sig, args, type);
         String msg = logObject.getLogJson();
         if (thrown != null) {
             logger.error(msg);

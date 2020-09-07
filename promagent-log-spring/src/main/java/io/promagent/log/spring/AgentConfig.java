@@ -17,9 +17,9 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Component
 @Data
@@ -28,80 +28,60 @@ import java.util.Map;
 @Slf4j
 public class AgentConfig {
 
-    @Value("#{'${promagent.mvm.groupId:io.promagent}'.replace('.','/')}")
-    private String groupId;
-
-    @Value("${promagent.mvm.artifactId:promagent-log}")
-    private String artifactId;
-
-    private String metadataXml = "maven-metadata.xml";
-
-    @Value("${promagent.mvm.metadataUrl:https://raw.githubusercontent.com/javazhangyi/promagent/master}")
-    private String metadataUrl;
-
-    @Value("${promagent.mvm.metadataTag:version}")
-    private String metadataTag;
-
-    private String metadataVersionUrl;
-    @Value("${promagent.mvm.metadataVersionTag:value}")
-    private String metadataVersionTag;
-
-    private String remoteDownloadUrl;
-
-    @Value("${promagent.mvm.name:}")
-    private String name;
-
-    @Value("${promagent.mvm.pass:}")
-    private String pass;
-
-    @Value("${promagent.agent.upJarTask:false}")
-    private Boolean upJarTask;
-
-    @Value("${promagent.agent.skip:false}")
-    private Boolean skip;
-
-    @Value("${promagent.agent.dir:${user.home}}")
-    private String agentDir;
-
-    @Value("${promagent.agent.jarFile:}")
-    private String jarFile;
-
-    @Value("${promagent.agent.debug:false}")
-    private String debug;
+    @Value("${promagent.agent.appName}")
+    private String appName;
 
     @Value("${promagent.agent.appEvn}")
     private String appEvn;
 
-    @Value("${promagent.agent.appName}")
-    private String appName;
+    @Value("${promagent.mvm.snapshotUrl:https://raw.githubusercontent.com/javazhangyi/promagent/master}")
+    private String snapshotUrl;
 
-    @Value("#{'${promagent.agent.headers:all}'.split(':')}")
+    @Value("${promagent.mvm.releaseUrl:}")
+    private String releaseUrl;
+
+    @Value("${promagent.mvm.auth.token:}")
+    private String token;
+    @Value("${promagent.agent.skip:false}")
+    private Boolean skip;
+    @Value("${promagent.agent.jarFile:}")
+    private String jarFile;
+    @Value("${promagent.agent.debug:false}")
+    private Boolean debug;
+
+    @Value("${promagent.agent.mdcLogId:logId}")
+    private String mdcLogId;
+    @Value("#{'${promagent.agent.headers:none}'.split(':')}")
     private List<String> headers;
-
-    @Value("${promagent.agent.requestId:X-REQUEST-ID}")
-    private String requestId;
-
+    @Value("#{'${promagent.agent.ignoreSignatures:none}'.split(':')}")
+    private List<String> ignoreSignatures;
+    @Value("${promagent.agent.traceId:X-REQUEST-ID}")
+    private String traceId;
     @Value("${promagent.agent.maxMsg:20480}")
-    private int maxMsg;
+    private Integer maxMsg;
+    @Value("${promagent.hooks.default.controllerPack:}")
+    private String controllerPack;
+    @Value("${promagent.hooks.default.scheduledPack:}")
+    private String scheduledPack;
 
-    @Value("${promagent.agent.callClass:io.promagent.log.Logger}")
-    private String callClass;
+    private String groupId = "io/promagent";
+    private String artifactId = "promagent-log";
+    private String metadataTag = "version";
+    private String metadataVersionTag = "value";
+    private String metadataXml = "maven-metadata.xml";
+    private String agentDir = System.getProperty("user.home") + File.separator + ".agent" + File.separator + "lib";
+    private String callClass = "io.promagent.log.Logger";
+    private String callInfoMethod = "info";
+    private String callErrorMethod = "error";
+    private String hookYml = "/hook.yml";
 
-    @Value("${promagent.agent.callMethod:info}")
-    private String callMethod;
-
-    @Value("${promagent.agent.callErrorMethod:error}")
-    private String callErrorMethod;
-
-    @Value("${promagent.agent.hookYml:/hook.yml}")
-    private String hookYml;
-
-    @Value("${promagent.agent.userMap:{\"colony\":\"default\"}}")
-    private String userMap;
-
-    @Value("#{'${promagent.agent.hookGroupId:[a-zA-Z]}'.concat('.*')}")
-    private String hookGroupId;
-
+    private String metadataUrl;
+    private String metadataVersionUrl;
+    private String remoteDownloadUrl;
+    private String ip;
+    private String downloadTime;
+    private String agentTime;
+    private Boolean loadAgent;
     private Hooks hooks;
     private String pid;
 
@@ -111,37 +91,39 @@ public class AgentConfig {
         initHooks();
         initAgentDir();
         initPid();
+        initIp();
         initProperty();
-        initUserMap();
     }
 
-    public void initUserMap() {
+    public void initIp() {
         try {
-            JSON.parseObject(this.userMap, Map.class);
+            ip = InetAddress.getLocalHost().getHostAddress();
         } catch (Exception ignore) {
-            this.userMap = "{\"userMap\":\"error\"}";
+            ip = "error";
         }
     }
 
-
     public void initMetadata() {
-        metadataVersionUrl = metadataUrl + "/" + groupId + "/" + artifactId + "/{0}/" + metadataXml;
-        remoteDownloadUrl = metadataUrl + "/" + groupId + "/" + artifactId + "/{0}/" + artifactId + "-{1}.jar";
-        metadataUrl = metadataUrl + "/" + groupId + "/" + artifactId + "/" + metadataXml;
+        String mirrorUrl = StringUtils.isEmpty(releaseUrl) ? snapshotUrl : releaseUrl;
+        metadataVersionUrl = mirrorUrl + "/" + groupId + "/" + artifactId + "/{0}/" + metadataXml;
+        remoteDownloadUrl = mirrorUrl + "/" + groupId + "/" + artifactId + "/{0}/" + artifactId + "-{1}.jar";
+        metadataUrl = mirrorUrl + "/" + groupId + "/" + artifactId + "/" + metadataXml;
     }
 
     private void initHooks() {
-        InputStream configIn = new BufferedInputStream(getClass().getResourceAsStream(hookYml));
-        String hooksStr = JSON.toJSONString(new Yaml().load(configIn));
-
-        Hooks hooks = JSONObject.parseObject(hooksStr, Hooks.class);
-        this.setHooks(hooks);
+        try {
+            InputStream configIn = new BufferedInputStream(getClass().getResourceAsStream(hookYml));
+            String hooksStr = JSON.toJSONString(new Yaml().load(configIn));
+            Hooks hooks = JSONObject.parseObject(hooksStr, Hooks.class);
+            this.setHooks(hooks);
+        } catch (Exception ignore) {
+        }
     }
 
     private void initAgentDir() {
         File agentFile;
         try {
-            agentFile = new File(agentDir + File.separator + ".agentLog" + File.separator + "lib");
+            agentFile = new File(agentDir);
             agentFile.mkdirs();
             agentDir = agentFile.getAbsolutePath();
             return;
@@ -150,7 +132,7 @@ public class AgentConfig {
         }
 
         try {
-            agentFile = new File(System.getProperty("java.io.tmpdir") + File.separator + ".agentLog" + File.separator + "lib");
+            agentFile = new File(System.getProperty("java.io.tmpdir") + File.separator + ".agent" + File.separator + "lib");
             agentFile.mkdirs();
             agentDir = agentFile.getAbsolutePath();
         } catch (Throwable ignore) {
@@ -165,41 +147,45 @@ public class AgentConfig {
     }
 
     public void initProperty() {
+        System.setProperty("agent.ip", ip);
         System.setProperty("agent.skip", skip.toString());
         System.setProperty("agent.debug", debug.toString());
         System.setProperty("agent.appEvn", appEvn);
         System.setProperty("agent.appName", appName);
-        System.setProperty("agent.requestId", requestId);
+        System.setProperty("agent.traceId", traceId);
+        System.setProperty("agent.mdcLogId", mdcLogId);
         System.setProperty("agent.maxMsg", String.valueOf(maxMsg));
         System.setProperty("agent.callClass", callClass);
-        System.setProperty("agent.callMethod", callMethod);
+        System.setProperty("agent.callInfoMethod", callInfoMethod);
         System.setProperty("agent.callErrorMethod", callErrorMethod);
         System.setProperty("agent.headers", JSONObject.toJSONString(headers));
-        System.setProperty("agent.userMap", userMap);
-
+        System.setProperty("agent.ignoreSignatures", JSONObject.toJSONString(ignoreSignatures));
 
         if (StringUtils.isEmpty(hooks)) {
             hooks = new Hooks();
         }
-        if (CollectionUtils.isEmpty(hooks.getAnnClassHook())) {
-            hooks.setAnnClassHook(new HashMap<>());
-        }
         if (CollectionUtils.isEmpty(hooks.getAnnMethodHook())) {
-            hooks.setAnnMethodHook(new HashMap<>());
+            hooks.setAnnMethodHook(new HashMap<String, List<String>>());
         }
-        if (CollectionUtils.isEmpty(hooks.getRegHooks())) {
-            hooks.setRegHooks(new HashMap<>());
+        if (CollectionUtils.isEmpty(hooks.getAnnClassHook())) {
+            hooks.setAnnClassHook(new HashMap<String, List<String>>());
         }
-
+        if (CollectionUtils.isEmpty(hooks.getRegHook())) {
+            hooks.setRegHook(new HashMap<String, List<String>>());
+        }
+        if (!StringUtils.isEmpty(controllerPack)) {
+            HooksUtils.addControllerHook(controllerPack, hooks);
+        }
+        if (!StringUtils.isEmpty(scheduledPack)) {
+            HooksUtils.addScheduledHook(scheduledPack, hooks);
+        }
         System.setProperty("agent.hooks.annMethodHook", JSONObject.toJSONString(hooks.getAnnMethodHook()));
         System.setProperty("agent.hooks.annMethodType", JSONObject.toJSONString(HooksUtils.getAnnMethodType(hooks)));
 
         System.setProperty("agent.hooks.annClassHook", JSONObject.toJSONString(hooks.getAnnClassHook()));
         System.setProperty("agent.hooks.annClassType", JSONObject.toJSONString(HooksUtils.getAnnClassType(hooks)));
 
-        System.setProperty("agent.hooks.regHook", JSONObject.toJSONString(hooks.getRegHooks()));
+        System.setProperty("agent.hooks.regHook", JSONObject.toJSONString(hooks.getRegHook()));
         System.setProperty("agent.hooks.regType", JSONObject.toJSONString(HooksUtils.getRegType(hooks)));
     }
 }
-
-

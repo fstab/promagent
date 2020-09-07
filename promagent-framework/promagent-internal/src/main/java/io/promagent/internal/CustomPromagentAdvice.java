@@ -31,11 +31,10 @@ public class CustomPromagentAdvice {
         Class<?> logUtilsClass = null;
         try {
             logUtilsClass = ClassLoaderCache.getInstance().currentClassLoader().loadClass(System.getProperty("agent.callClass"));
-            Method logMethod = logUtilsClass.getMethod(System.getProperty("agent.callMethod"), Long.class, Throwable.class, Object.class, Method.class, Object[].class);
+            Method logMethod = logUtilsClass.getMethod(System.getProperty("agent.callInfoMethod"), Long.class, Throwable.class, Object.class, Method.class, Object[].class);
             Long exc = System.currentTimeMillis() - startTime;
             logMethod.invoke(null, exc, thrown, returned, method, args);
         } catch (Throwable frameError) {
-            frameError.printStackTrace();
             try {
                 if (logUtilsClass == null) {
                     logUtilsClass = ClassLoaderCache.getInstance().currentClassLoader().loadClass(System.getProperty("agent.callClass"));

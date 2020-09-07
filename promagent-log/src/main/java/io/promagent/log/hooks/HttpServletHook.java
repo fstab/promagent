@@ -1,6 +1,5 @@
+
 package io.promagent.log.hooks;
-
-
 
 import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
@@ -33,7 +32,7 @@ public class HttpServletHook {
         Map<String, String> result = new HashMap<>();
         List<String> headerConfig = LogConfig.headers;
 
-        if (headerConfig.size() == 0 || headerConfig.contains("no")) {
+        if (headerConfig.size() == 0 || headerConfig.contains("none")) {
             return result;
         }
 
@@ -75,7 +74,7 @@ public class HttpServletHook {
 
                 HttpServletRequest requestHttp = (HttpServletRequest) request;
 
-                String logId = requestHttp.getHeader(LogConfig.REQUEST_ID);
+                String logId = requestHttp.getHeader(LogConfig.TRACE_ID);
                 Map<String, String> header = getHeaders(requestHttp);
                 String uri = requestHttp.getRequestURI();
 

@@ -13,5 +13,5 @@ import java.util.Map;
 public class Hooks {
     private Map<String, List<String>> annMethodHook;
     private Map<String, List<String>> annClassHook;
-    private Map<String, List<String>> regHooks;
+    private Map<String, List<String>> regHook;
 }

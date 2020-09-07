@@ -1,6 +1,7 @@
 package io.promagent.log.core;
 
 import com.alibaba.fastjson.JSONObject;
+
 import io.promagent.log.config.LogConfig;
 import io.promagent.log.config.LogConstants;
 import io.promagent.log.config.TypeConstants;
@@ -29,8 +30,8 @@ public class LogObject {
         request.put(LogConstants.reg_params, params);
     }
 
-    protected void setMethod(Long exec, Throwable thrown, Object ret, Method sig, Object[] args, String type) {
-        method.put(LogConstants.met_exec, exec);
+    protected void setMethod(Long exce, Throwable thrown, Object ret, Method sig, Object[] args, String type) {
+        method.put(LogConstants.met_exec, exce);
         method.put(LogConstants.met_sig, LogObjectUtils.getSignature(sig));
         method.put(LogConstants.met_args, LogObjectUtils.getArgs(args));
         method.put(LogConstants.met_ret, LogObjectUtils.getReturn(ret));
@@ -60,8 +61,6 @@ public class LogObject {
         resultJson.put(LogConstants.method, method);
         resultJson.put(LogConstants.basic, getBasic());
         resultJson.put(LogConstants.mdc, getMdc());
-        resultJson.put(LogConstants.userMap, LogConfig.userMap);
-
         return resultJson.toJSONString();
     }
 
@@ -69,6 +68,8 @@ public class LogObject {
         Map<String, Object> basic = new HashMap<>();
         basic.put(LogConstants.basic_PtxId, PtxId);
         basic.put(LogConstants.basic_sn, sn);
+        basic.put(LogConstants.basic_logStamp, System.currentTimeMillis());
+        basic.put(LogConstants.basic_ip, LogConfig.IP);
         return basic;
     }
 

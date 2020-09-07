@@ -1,9 +1,8 @@
 package io.promagent.log.utils;
 
-
-
 import io.promagent.log.config.LogConfig;
 import io.promagent.log.config.TypeConstants;
+import org.springframework.util.CollectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -15,27 +14,30 @@ public class TypeUtils {
             return LogConfig.type.get(methodName);
         }
 
-        String returnType = getTypeFromReg(injectionMethod.getDeclaringClass().getCanonicalName());
-        if (returnType.equals(TypeConstants.SYSTEM)) {
-            returnType = getTypeFromAnnotations(injectionMethod);
+        String type = getTypeFromReg(injectionMethod.getDeclaringClass().getCanonicalName());
+        if (type.equals(TypeConstants.SYSTEM)) {
+            type = getTypeFromAnn(injectionMethod);
         }
-        LogConfig.type.put(methodName, returnType);
-        return returnType;
+        LogConfig.type.put(methodName, type);
+        return type;
     }
 
-    private static String getTypeFromAnnotations(Method methodInjection) {
+    private static String getTypeFromAnn(Method methodInjection) {
         String result = TypeConstants.SYSTEM;
-
-        for (Annotation annotationIter : methodInjection.getAnnotations()) {
-            String annotationMethod = annotationIter.annotationType().getCanonicalName();
-            if (LogConfig.annMethodType.containsKey(annotationMethod)) {
-                return LogConfig.annMethodType.get(annotationMethod);
+        if (!CollectionUtils.isEmpty(LogConfig.annMethodType)) {
+            for (Annotation annIter : methodInjection.getAnnotations()) {
+                String annMethod = annIter.annotationType().getCanonicalName();
+                if (LogConfig.annMethodType.containsKey(annMethod)) {
+                    return LogConfig.annMethodType.get(annMethod);
+                }
             }
         }
-        for (Annotation annotationIter : methodInjection.getDeclaringClass().getAnnotations()) {
-            String annotationClass = annotationIter.annotationType().getCanonicalName();
-            if (LogConfig.annClassType.containsKey(annotationClass)) {
-                return LogConfig.annClassType.get(annotationClass);
+        if (!CollectionUtils.isEmpty(LogConfig.annMethodType)) {
+            for (Annotation annIter : methodInjection.getDeclaringClass().getAnnotations()) {
+                String annClass = annIter.annotationType().getCanonicalName();
+                if (LogConfig.annClassType.containsKey(annClass)) {
+                    return LogConfig.annClassType.get(annClass);
+                }
             }
         }
         return result;

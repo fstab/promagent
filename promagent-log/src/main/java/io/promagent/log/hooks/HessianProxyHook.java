@@ -1,7 +1,6 @@
 package io.promagent.log.hooks;
 
 import com.caucho.hessian.client.HessianConnection;
-
 import io.promagent.annotations.*;
 import io.promagent.log.Logger;
 import io.promagent.log.config.LogConfig;
@@ -18,7 +17,7 @@ public class HessianProxyHook {
     @Before(method = {"addRequestHeaders"})
     public void before(HessianConnection conn) {
         try {
-            conn.addHeader(LogConfig.REQUEST_ID, MdcUtils.getLogId());
+            conn.addHeader(LogConfig.TRACE_ID, MdcUtils.getLogId());
         } catch (Throwable e) {
             Logger.error(e);
         }
