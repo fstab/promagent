@@ -14,7 +14,7 @@ import static net.bytebuddy.asm.Advice.*;
  * @Author:zhangyi
  * @Date:2019/7/31
  */
-public class CustomPromagentAdvice {
+public class CustomPromagentAdvice{
 
     @OnMethodEnter
     @SuppressWarnings("unchecked")
@@ -31,7 +31,7 @@ public class CustomPromagentAdvice {
         Class<?> logUtilsClass = null;
         try {
             logUtilsClass = ClassLoaderCache.getInstance().currentClassLoader().loadClass(System.getProperty("agent.callClass"));
-            Method logMethod = logUtilsClass.getMethod(System.getProperty("agent.callInfoMethod"), Long.class, Throwable.class, Object.class, Method.class, Object[].class);
+            Method logMethod = logUtilsClass.getMethod("info", Long.class, Throwable.class, Object.class, Method.class, Object[].class);
             Long exc = System.currentTimeMillis() - startTime;
             logMethod.invoke(null, exc, thrown, returned, method, args);
         } catch (Throwable frameError) {
@@ -40,7 +40,7 @@ public class CustomPromagentAdvice {
                     logUtilsClass = ClassLoaderCache.getInstance().currentClassLoader().loadClass(System.getProperty("agent.callClass"));
                 }
                 if (logUtilsClass != null) {
-                    Method frameErrorMethod = logUtilsClass.getMethod(System.getProperty("agent.callErrorMethod"), Throwable.class);
+                    Method frameErrorMethod = logUtilsClass.getMethod("error", Throwable.class);
                     frameErrorMethod.invoke(null, frameError);
                 }
             } catch (Throwable ignore) {

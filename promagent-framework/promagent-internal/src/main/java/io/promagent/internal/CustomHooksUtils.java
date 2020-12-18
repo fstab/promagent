@@ -21,9 +21,6 @@ import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
  */
 public class CustomHooksUtils {
     public static AgentBuilder applyHooks(AgentBuilder agentBuilder, ClassLoaderCache classLoaderCache) {
-        if (Boolean.valueOf(System.getProperty("agent.skip"))) {
-            return agentBuilder;
-        }
         if (Boolean.valueOf(System.getProperty("agent.debug"))) {
             agentBuilder = agentBuilder.with(AgentBuilder.Listener.StreamWriting.toSystemError());
         }
