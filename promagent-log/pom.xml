@@ -56,6 +56,7 @@
                 <module>log-agent-builder</module>
                 <module>log-agent-core</module>
                 <module>log-agent-load</module>
+                <module>log-agent-test</module>
             </modules>
         </profile>
     </profiles>

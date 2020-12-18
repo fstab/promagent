@@ -1,0 +1,11 @@
+promagent:
+  agent:
+    appName: testAgent
+    headers: !!seq
+      - "all"
+  fastHooks:
+     controllerPackage: io.promagent.agent.test.controller
+  load:
+    agentJar: "E:\\study\\promagent\\promagent-log\\log-agent-builder\\target\\log-agent.jar"
+
+
