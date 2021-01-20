@@ -1,7 +1,6 @@
 package io.promagent.internal.instrumentationtests;
 
 import io.promagent.agent.ClassLoaderCache;
-import io.promagent.hookcontext.MetricsStore;
 import io.promagent.internal.HookMetadata;
 import io.promagent.internal.HookMetadataParser;
 import org.mockito.Mockito;
@@ -33,7 +32,7 @@ class Util {
         return mockedClassLoaderCache;
     }
 
-    static MetricsStore mockMetricsStore() {
-        return Mockito.mock(MetricsStore.class);
-    }
+//    static MetricsStore mockMetricsStore() {
+//        return Mockito.mock(MetricsStore.class);
+//    }
 }

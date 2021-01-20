@@ -19,7 +19,6 @@ import io.promagent.annotations.After;
 import io.promagent.annotations.Before;
 import io.promagent.annotations.Returned;
 import io.promagent.annotations.Thrown;
-import io.promagent.hookcontext.MetricsStore;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -37,19 +36,19 @@ public class Delegator {
     private static Delegator instance; // not thread-safe, but it is set only once in the agent's premain method.
 
     private final SortedSet<HookMetadata> hookMetadata;
-    private final MetricsStore metricsStore;
+//    private final MetricsStore metricsStore;
     private final ClassLoaderCache classLoaderCache;
     private final ThreadLocal<Map<Class<?>, Object>> threadLocal;
 
-    private Delegator(SortedSet<HookMetadata> hookMetadata, MetricsStore metricsStore, ClassLoaderCache classLoaderCache) {
+    private Delegator(SortedSet<HookMetadata> hookMetadata, ClassLoaderCache classLoaderCache) {
         this.hookMetadata = hookMetadata;
-        this.metricsStore = metricsStore;
+//        this.metricsStore = metricsStore;
         this.classLoaderCache = classLoaderCache;
         this.threadLocal = ThreadLocal.withInitial(HashMap::new);
     }
 
-    public static void init(SortedSet<HookMetadata> hookMetadata, MetricsStore metricsStore, ClassLoaderCache classLoaderCache) {
-        instance = new Delegator(hookMetadata, metricsStore, classLoaderCache);
+    public static void init(SortedSet<HookMetadata> hookMetadata, ClassLoaderCache classLoaderCache) {
+        instance = new Delegator(hookMetadata, classLoaderCache);
     }
 
     /**
@@ -213,11 +212,11 @@ public class Delegator {
         } else {
             String errMsg = "Failed to create new instance of hook " + hookClass.getSimpleName() + ": ";
             try {
-                Object newHookInstance = hookClass.getConstructor(MetricsStore.class).newInstance(metricsStore);
+                Object newHookInstance = hookClass.getConstructor().newInstance();
                 threadLocal.get().put(hookClass, newHookInstance);
                 return new HookInstance(newHookInstance, false);
             } catch (NoSuchMethodException e) {
-                throw new HookException(errMsg + "Hook classes must have a public constructor with a single parameter of type " + MetricsStore.class.getSimpleName(), e);
+                throw new HookException(errMsg + "Hook classes must have a public constructor with a single parameter of type " , e);
             } catch (Exception e) {
                 throw new HookException(errMsg + e.getMessage(), e);
             }

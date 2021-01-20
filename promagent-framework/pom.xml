@@ -32,8 +32,6 @@
                 <module>promagent-agent</module>
                 <module>promagent-api</module>
                 <module>promagent-internal</module>
-                <module>promagent-exporter</module>
-                <module>promagent-loader</module> <!-- this is only in the promagent-loader profile -->
                 <module>promagent-maven-plugin</module>
             </modules>
         </profile>
@@ -47,7 +45,6 @@
                 <module>promagent-agent</module>
                 <module>promagent-api</module>
                 <module>promagent-internal</module>
-                <module>promagent-exporter</module>
                 <module>promagent-maven-plugin</module>
             </modules>
         </profile>
@@ -56,11 +53,11 @@
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>io.prometheus</groupId>
-                <artifactId>simpleclient_common</artifactId>
-                <version>0.5.0</version>
-            </dependency>
+            <!--<dependency>-->
+                <!--<groupId>io.prometheus</groupId>-->
+                <!--<artifactId>simpleclient_common</artifactId>-->
+                <!--<version>0.5.0</version>-->
+            <!--</dependency>-->
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-api</artifactId>
@@ -70,16 +67,6 @@
         </dependencies>
     </dependencyManagement>
 
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <!-- Native support for the JUnit platform was introduced with  2.22.0, so make sure we use this or later as the surefire plugin version -->
-                    <version>2.22.1</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
+
+
 </project>

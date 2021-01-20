@@ -51,6 +51,9 @@ public class PromagentMojo extends AbstractMojo {
             // Add project dependencies
             for (Artifact artifact : project.getArtifacts()) {
                 agentDependencies.assertNoConflict(artifact);
+                if (artifact.getArtifactId().contains("log-agent-core")){
+                    continue;
+                }
                 agentJar.addFile(artifact.getFile(), SHARED_JARS);
             }
             // Add agent internal jars

@@ -1,0 +1,23 @@
+# hook 文件模板
+#1
+#annMethodHook:                                                                      # 方法注解日志打印
+#      "^com.bb.*": !!seq                                                          # 正则表达式:^com.bb.*的package
+#           - "org.springframework.web.bind.annotation.RequestMapping:ACCESS"        # 日志打印 @RequestMapping 修饰的方法
+#           - "org.springframework.web.bind.annotation.PostMapping:ACCESS"           # 日志打印 @PostMapping 修饰的方法
+#           - "org.springframework.web.bind.annotation.GetMapping:ACCESS"            # 日志打印 @GetMapping 修饰的方法
+#           - "org.springframework.web.bind.annotation.DeleteMapping:ACCESS"         # 日志打印 @DeleteMapping 修饰的方法
+#           - "org.springframework.web.bind.annotation.PutMapping:ACCESS"            # 日志打印 @PutMapping 修饰的方法
+#           - "org.springframework.scheduling.annotation.Scheduled:CRON"             # 日志打印 @Scheduled 修饰的方法
+#
+#annClassHook:                                                                       # 类注解日志打印
+#      "^com.bb.*": !!seq                                                          # 正则表达式:^com.bb.*的package
+#           - "org.springframework.web.bind.annotation.RestController:ACCESS"        #日志打印 @RestController 修饰的方法
+#regHook:                                                                            # 正则日志打印
+#      "^com.bb.bbfff.code.util.HttpUtils$:THIRD": !!seq                          # 正则表达式:^com.bb.bbfff.code.util.HttpUtils$ 的package，日志类型为 THIRD，默认为SYSTEM
+#           - ".*post.*"                                                             # 正则表达式：.*post.* 的所有方法
+#      "^com.bb.bbfff.code.plpay.common.BaasHttpUtil$:THIRD": !!seq
+#           - "[a-zA-Z].*"                                                           # 正则表达式：[a-zA-Z].* 的所有方法，不能直接使用.*,需要加限定词[a-zA-Z].*
+#      "^com.bb.common.util.HttpClientProxy$:THIRD": !!seq
+#           - "[a-zA-Z].*:1"                                                         # 正则表达式：[a-zA-Z].*:1 的所有方法，方法参数个数为1
+#      "^com.bb.openplatform.http.HttpUtil$:THIRD": !!seq
+#           - ".*Response.*"                                                         # 正则表达式：.*Response.* 的所有方法
